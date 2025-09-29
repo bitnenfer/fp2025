@@ -17,17 +17,11 @@ RWTexture2D<float> HistoryM2Out : register(u2);
 ConstantBuffer<ConstantBufferData> ConstantData : register(b0);
 
 SamplerState linearClamp : register(s0);
+SamplerState pointClamp : register(s1);
 
 float Luma(float3 c)
 {
     return dot(c, float3(0.299, 0.587, 0.114));
-}
-
-float LinearDepthFromPos(float3 worldPos)
-{
-    // View-space Z from position (positive forward depends on your convention).
-    // Here we compute |camera->point| as a simple linear depth proxy:
-    return distance(worldPos, ConstantData.cameraPos);
 }
 
 [numthreads(32, 32, 1)]
@@ -37,16 +31,19 @@ void main( uint3 DTid : SV_DispatchThreadID )
     if (px.x >= uint(ConstantData.resolution.x) || px.y >= uint(ConstantData.resolution.y))
         return;
     
-    float2 uv = (float2(px) + 0.5) / ConstantData.resolution.xy;
-    float3 ccurr = CurrentFrame.Load(int3(px, 0)).rgb;
-    float3 ncurr = normalize(NormalBuffer.Load(float3(px, 0)).rgb);
-    float3 pcurr = PositionBuffer.Load(float3(px, 0)).rgb;
-    float zcurr = LinearDepthFromPos(pcurr);
+    float4 positionAndId = PositionBuffer[px];
+    float4 currentFrameAndDepth = CurrentFrame[px];
     
-    float2 vel = VelocityBuffer.Load(int3(px, 0)).xy / ConstantData.resolution.xy;
+    float2 uv = (float2(px) + 0.5) / ConstantData.resolution.xy;
+    float3 ccurr = currentFrameAndDepth.rgb;
+    float3 ncurr = normalize(NormalBuffer[px].rgb);
+    float3 pcurr = positionAndId.xyz;
+    uint idcurr = uint(positionAndId.w);
+    float zcurr = currentFrameAndDepth.w;
+    float2 vel = VelocityBuffer[px].xy;
     float2 uvPrev = uv + vel;
     
-    bool valid = all(uvPrev > 0.0) && all(uvPrev <= 1.0);
+    bool valid = all(uvPrev > 0.0) && all(uvPrev <= 1.0) && idcurr > 0;
     
     float3 cprev = 0;
     float m1prev = 0;
@@ -54,17 +51,21 @@ void main( uint3 DTid : SV_DispatchThreadID )
     
     if (valid)
     {
-        cprev = HistoryBuffer.SampleLevel(linearClamp, uvPrev, 0).rgb;
+        float4 prevFrameAndDepth = HistoryBuffer.SampleLevel(linearClamp, uvPrev, 0);
+        cprev = prevFrameAndDepth.rgb;
         m1prev = HistoryM1Prev.SampleLevel(linearClamp, uvPrev, 0).r;
         m2prev = HistoryM2Prev.SampleLevel(linearClamp, uvPrev, 0).r;
         float3 nprev = normalize(PrevNormalBuffer.SampleLevel(linearClamp, uvPrev, 0).rgb);
         float3 pprev = PrevPositionBuffer.SampleLevel(linearClamp, uvPrev, 0).rgb;
-        float zprev = LinearDepthFromPos(pprev);
+        uint idprev = uint(PrevPositionBuffer.SampleLevel(pointClamp, uvPrev, 0).w);
+        float zprev = prevFrameAndDepth.w;
         float ndot = dot(ncurr, nprev);
         float dz = abs(zcurr - zprev);
-        float dzThr = max(0.002 * zcurr, 0.002 * 0.5);
+        const float zt = 0.004;
+        float dzThr = max(zt * zcurr, zt * 0.5);
         
-        valid = valid && (ndot > 0.9) && (dz < dzThr);
+        const float nt = 0.9;
+        valid = valid && (ndot > nt) && (dz < dzThr) && idprev == idcurr;
 
     }
 
@@ -114,11 +115,12 @@ void main( uint3 DTid : SV_DispatchThreadID )
     }
     else
     {
-        Cout = lerp(ccurr, Chist, 1 - 0.15);
-        M1 = lerp(Ycurr, m1prev, 1 - 0.15);
-        M2 = lerp(Ycurr * Ycurr, m2prev, 1 - 0.15);
+        const float blend = 0.2;
+        Cout = lerp(ccurr, Chist, 1 - blend);
+        M1 = lerp(Ycurr, m1prev, 1 - blend);
+        M2 = lerp(Ycurr * Ycurr, m2prev, 1 - blend);
     }
-    ResultTexture[px] = float4(Cout, 1);
+    ResultTexture[px] = float4(Cout, zcurr);
     HistoryM1Out[px] = M1;
     HistoryM2Out[px] = M2;
 }

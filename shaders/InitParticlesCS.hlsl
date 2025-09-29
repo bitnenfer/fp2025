@@ -34,24 +34,24 @@ void main( uint3 DTid : SV_DispatchThreadID )
         particle.friction = 1.0;
         particle.dynamic = false;
         particle.emissive = 0;
-        particle.albedo = color;
+        particle.albedo = 1;
         particle.reflection = 0.0;
     }
     else
     {
         particle.radius = 0.5 + rand() * 4.0;
         particle.position = (float3(rand(), rand(), rand()) * 2.0 - 1.0) * 150.0;
-        particle.elasticity = 0.5 + rand()*0.5;
+        particle.elasticity = 0.7 + rand()*0.3;
         particle.velocity = particle.position*-0.005;
         particle.acceleration = particle.position*-0.001;
-        particle.friction = 0.5 + rand() * 0.5;
+        particle.friction = 0.5;
         particle.dynamic = true;
-        particle.emissive = rand() > 0.6 ? 1 : 0;
+        particle.emissive = rand() > 0.2 ?  2.0 : 0;
         particle.albedo = color;
         particle.reflection = rand();
     }
-    particle.prevPosition = 0;
     particle.id = DTid.x + 1;
+    particle.prevPosition = 0;
     Particles[DTid.x] = particle;
     
 }

@@ -8,6 +8,7 @@
 #include "../shaders/RenderToScreenVS.h"
 #include "../shaders/RenderToScreenPS.h"
 #include "../shaders/TemporalReprojectionCS.h"
+#include "../shaders/ATrousFilterCS.h"
 
 #define IS_CPU 1
 #include "../shaders/ParticleConfig.h"
@@ -15,7 +16,7 @@
 
 int main()
 {
-	ni::init(1920, 1080, "FP2025", !true, !true);
+	ni::init(1920, 1080, "FP2025", !true, true);
 
 	// Initialize particles
 	ni::ComputePipelineDesc initParticlesDesc = {};
@@ -88,8 +89,20 @@ int main()
 		ni::DescriptorRangeEntry(D3D12_DESCRIPTOR_RANGE_TYPE_CBV, 1, 0, 0)
 	), D3D12_SHADER_VISIBILITY_ALL);
 	temporalReprojectionDesc.layout.addStaticSampler(D3D12_FILTER_MIN_MAG_MIP_LINEAR, D3D12_TEXTURE_ADDRESS_MODE_CLAMP, 0, 0, D3D12_SHADER_VISIBILITY_ALL);
+	temporalReprojectionDesc.layout.addStaticSampler(D3D12_FILTER_MIN_MAG_MIP_POINT, D3D12_TEXTURE_ADDRESS_MODE_CLAMP, 1, 0, D3D12_SHADER_VISIBILITY_ALL);
 	temporalReprojectionDesc.shader = { TemporalReprojectionCS, sizeof(TemporalReprojectionCS) };
 	ni::PipelineState* temporalReprojection = ni::buildComputePipelineState(temporalReprojectionDesc);
+
+	// A-Trous Filter
+	ni::ComputePipelineDesc AtrousFilterDesc = {};
+	AtrousFilterDesc.layout.addDescriptorTable(ni::DescriptorRange(
+		ni::DescriptorRangeEntry(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 4, 0, 0),
+		ni::DescriptorRangeEntry(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 1, 0, 0)
+	), D3D12_SHADER_VISIBILITY_ALL);
+	AtrousFilterDesc.layout.add32BitConstant(0, 0, 3, D3D12_SHADER_VISIBILITY_ALL);
+	AtrousFilterDesc.layout.add32BitConstant(1, 0, 1, D3D12_SHADER_VISIBILITY_ALL);
+	AtrousFilterDesc.shader = { ATrousFilterCS, sizeof(ATrousFilterCS) };
+	ni::PipelineState* AtrousFilter = ni::buildComputePipelineState(AtrousFilterDesc);
 
 	// Temporal AA Setup
 	ni::ComputePipelineDesc temporalAADesc = {};
@@ -229,6 +242,9 @@ int main()
 			commandList->SetComputeRootDescriptorTable(0, temporalReprojectionDescriptorTable.gpuBaseHandle);
 			commandList->Dispatch((uint32_t)(sceneConstantBufferData.resolution.x / 32.0f), (uint32_t)(sceneConstantBufferData.resolution.y / 32.0f) + 1, 1);
 
+			resourceBarrier.transition(resultTAA->resource, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+			resourceBarrier.transition(outputTexture->resource, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+			resourceBarrier.flush(commandList);
 
 			commandList->SetPipelineState(temporalAA->pso);
 			commandList->SetComputeRootSignature(temporalAA->rootSignature);
@@ -323,6 +339,12 @@ int main()
 
 	ni::waitForAllFrames();
 
+	ni::destroyPipelineState(AtrousFilter);
+	ni::destroyPipelineState(temporalReprojection);
+	ni::destroyTexture(historyM1Buffer);
+	ni::destroyTexture(historyM2Buffer);
+	ni::destroyTexture(prevHistoryM1Buffer);
+	ni::destroyTexture(prevHistoryM2Buffer);
 	ni::destroyTexture(prevPositionBuffer);
 	ni::destroyTexture(prevNormalBuffer);
 	ni::destroyTexture(positionBuffer);

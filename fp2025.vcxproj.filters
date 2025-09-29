@@ -38,5 +38,6 @@
     <FxCompile Include="shaders\RenderToScreenVS.hlsl" />
     <FxCompile Include="shaders\RenderToScreenPS.hlsl" />
     <FxCompile Include="shaders\TemporalReprojectionCS.hlsl" />
+    <FxCompile Include="shaders\ATrousFilterCS.hlsl" />
   </ItemGroup>
 </Project>

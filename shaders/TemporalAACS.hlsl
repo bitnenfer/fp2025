@@ -58,8 +58,9 @@ float4 YCoCgToRGBA(float4 YCoCg)
 #endif
 }
 
-float4 GetCurrentFrame(uint2 uv)
+float4 GetCurrentFrame(int2 uv)
 {
+    uv = clamp(uv, int2(0, 0), int2(Resolution.xy) - 1);
     return CurrentFrame[uv];
 }
 
@@ -67,10 +68,10 @@ float4 GetCurrentFrame(uint2 uv)
 void main( uint3 DTid : SV_DispatchThreadID )
 {
     float4 result = 0;
-    float GlobalBlendFactor = 0.8;
-    float2 currUv = float2(DTid.xy) / (Resolution).xy;
-    float2 velocity = VelocityBuffer[DTid.xy].xy;
-    float2 prevUv = currUv + velocity; //(currUv - velocity) * (Resolution).xy;
+    float GlobalBlendFactor = 0.7;
+    float2 currUv = (float2(DTid.xy) + 0.5) / (Resolution).xy;
+    float2 velocity = VelocityBuffer[DTid.xy].xy / (Resolution).xy;
+    float2 prevUv = currUv + velocity;
     float currDepth = CurrentFrame[DTid.xy].w;
     float prevDepth = HistoryBuffer[DTid.xy].w;
     float4 currentColor = CurrentFrame[DTid.xy];
@@ -78,19 +79,19 @@ void main( uint3 DTid : SV_DispatchThreadID )
     currentColor = RGBAToYCoCg(currentColor);
     historyColor = RGBAToYCoCg(historyColor);
 
-    float4 neighborBoxTL = RGBAToYCoCg(GetCurrentFrame(uint2(int2(DTid.xy) + int2(-1, -1))));
-    float4 neighborBoxTC = RGBAToYCoCg(GetCurrentFrame(uint2(int2(DTid.xy) + int2(+0, -1))));
-    float4 neighborBoxTR = RGBAToYCoCg(GetCurrentFrame(uint2(int2(DTid.xy) + int2(+1, -1))));
-    float4 neighborBoxCL = RGBAToYCoCg(GetCurrentFrame(uint2(int2(DTid.xy) + int2(-1, +0))));
-    float4 neighborBoxCR = RGBAToYCoCg(GetCurrentFrame(uint2(int2(DTid.xy) + int2(+1, +0))));
-    float4 neighborBoxBL = RGBAToYCoCg(GetCurrentFrame(uint2(int2(DTid.xy) + int2(-1, +1))));
-    float4 neighborBoxBC = RGBAToYCoCg(GetCurrentFrame(uint2(int2(DTid.xy) + int2(+0, +1))));
-    float4 neighborBoxBR = RGBAToYCoCg(GetCurrentFrame(uint2(int2(DTid.xy) + int2(+1, +1))));
+    float4 neighborBoxTL = RGBAToYCoCg(GetCurrentFrame((int2(DTid.xy) + int2(-1, -1))));
+    float4 neighborBoxTC = RGBAToYCoCg(GetCurrentFrame((int2(DTid.xy) + int2(+0, -1))));
+    float4 neighborBoxTR = RGBAToYCoCg(GetCurrentFrame((int2(DTid.xy) + int2(+1, -1))));
+    float4 neighborBoxCL = RGBAToYCoCg(GetCurrentFrame((int2(DTid.xy) + int2(-1, +0))));
+    float4 neighborBoxCR = RGBAToYCoCg(GetCurrentFrame((int2(DTid.xy) + int2(+1, +0))));
+    float4 neighborBoxBL = RGBAToYCoCg(GetCurrentFrame((int2(DTid.xy) + int2(-1, +1))));
+    float4 neighborBoxBC = RGBAToYCoCg(GetCurrentFrame((int2(DTid.xy) + int2(+0, +1))));
+    float4 neighborBoxBR = RGBAToYCoCg(GetCurrentFrame((int2(DTid.xy) + int2(+1, +1))));
 
-    float4 neighborCrossTC = RGBAToYCoCg(GetCurrentFrame(uint2(int2(DTid.xy) + int2(+0, -1))));
-    float4 neighborCrossCL = RGBAToYCoCg(GetCurrentFrame(uint2(int2(DTid.xy) + int2(-1, +0))));
-    float4 neighborCrossCR = RGBAToYCoCg(GetCurrentFrame(uint2(int2(DTid.xy) + int2(+1, +0))));
-    float4 neighborCrossBC = RGBAToYCoCg(GetCurrentFrame(uint2(int2(DTid.xy) + int2(+0, +1))));
+    float4 neighborCrossTC = RGBAToYCoCg(GetCurrentFrame((int2(DTid.xy) + int2(+0, -1))));
+    float4 neighborCrossCL = RGBAToYCoCg(GetCurrentFrame((int2(DTid.xy) + int2(-1, +0))));
+    float4 neighborCrossCR = RGBAToYCoCg(GetCurrentFrame((int2(DTid.xy) + int2(+1, +0))));
+    float4 neighborCrossBC = RGBAToYCoCg(GetCurrentFrame((int2(DTid.xy) + int2(+0, +1))));
 
     float4 neighborBoxMin = min(currentColor, min(neighborBoxTL, min(neighborBoxTC, min(neighborBoxTR, min(neighborBoxCL, min(neighborBoxCR, min(neighborBoxBL, min(neighborBoxBC, neighborBoxBR))))))));
     float4 neighborBoxMax = max(currentColor, max(neighborBoxTL, max(neighborBoxTC, max(neighborBoxTR, max(neighborBoxCL, max(neighborBoxCR, max(neighborBoxBL, max(neighborBoxBC, neighborBoxBR))))))));

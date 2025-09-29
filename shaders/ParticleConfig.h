@@ -1,4 +1,4 @@
-#define NUM_PARTICLES (32*6)
+#define NUM_PARTICLES (32*2)
 
 #ifdef IS_CPU
 typedef ni::Float3 float3;
@@ -9,10 +9,10 @@ typedef uint32_t uint;
 struct ParticleData
 {
 	float3 position;
+	float3 prevPosition;
 	float3 velocity;
 	float3 acceleration;
 	float3 albedo;
-	float3 prevPosition;
 	float radius;
 	float elasticity;
 	float friction;
@@ -37,3 +37,7 @@ struct ConstantBufferData
 	float time;
 	float frame;
 };
+
+#ifndef IS_CPU
+float toRad(float d) { return 3.14159265359f * d / 180.0f; }
+#endif

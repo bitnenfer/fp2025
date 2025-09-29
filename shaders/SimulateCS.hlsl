@@ -71,9 +71,10 @@ void main( uint3 DTid : SV_DispatchThreadID )
     float3 prevPosition = particle.position;
     if (particle.dynamic)
     {
+        Particles[DTid.x].acceleration = 0.0005 * (float3(0, 0, 0) - particle.position);
         Particles[DTid.x].velocity += particle.acceleration;
         Particles[DTid.x].position += particle.velocity;
-        Particles[DTid.x].acceleration = particle.position * -0.001;
+        
 
         for (int i = 0; i < NUM_PARTICLES; ++i)
         {
@@ -100,8 +101,6 @@ void main( uint3 DTid : SV_DispatchThreadID )
                 Particles[DTid.x] = particle1;
             }
         }
-
     }
-    Particles[DTid.x].prevPosition = prevPosition;
-    
+    Particles[DTid.x].prevPosition = Particles[DTid.x].position;
 }
