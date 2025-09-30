@@ -1,8 +1,9 @@
-#define NUM_PARTICLES (32*6)
+#define NUM_PARTICLES (32*10)
 
 #ifdef IS_CPU
 typedef ni::Float3 float3;
 typedef ni::Float4x4 float4x4;
+typedef ni::Float2 float2;
 typedef uint32_t uint;
 #endif
 
@@ -37,6 +38,16 @@ struct ConstantBufferData
 	float3 resolution;
 	float time;
 	float frame;
+};
+
+struct DepthOfFieldData
+{
+	float2 resolution;
+	float focusPoint;
+	float focusScale;
+	float radiusScale;
+	float blurSize;
+	float maxDist;
 };
 
 #ifndef IS_CPU

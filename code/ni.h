@@ -30,6 +30,12 @@
 #define NI_COLOR_RGBA_FLOAT(r, g, b, a) NI_COLOR_RGBA_UINT((uint8_t)((r) * 255.0f), (uint8_t)((g) * 255.0f), (uint8_t)((b) * 255.0f), (uint8_t)((a) * 255.0f))
 #define NI_COLOR_RGB_FLOAT(r, g, b) NI_COLOR_RGBA_FLOAT(r, g, b, 1.0f)
 
+#ifdef _DEBUG
+#define NI_DEBUG 1
+#else
+#define NI_DEBUG 0
+#endif
+
 namespace ni {
 
 	void logFmt(const char* fmt, ...);
@@ -509,7 +515,7 @@ namespace ni {
 		void allocSRVTexCube(ni::Resource& resource, DXGI_FORMAT format, uint32_t mostDetailedMip, uint32_t mipLevels, float resourceMinLODClamp);
 		void allocRTVTex2D(ni::Resource& resource, DXGI_FORMAT format, uint32_t mipSlice, uint32_t planeSlice);
 		void allocDSVTex2D(ni::Resource& resource, DXGI_FORMAT format, uint32_t mipSlice, D3D12_DSV_FLAGS flags);
-		void allocCBV(ni::Resource& resource, size_t sizeInBytes);
+		void allocCBVBuffer(ni::Resource& resource, size_t sizeInBytes);
 
 		D3D12_GPU_DESCRIPTOR_HANDLE gpuHandle(uint64_t index);
 		D3D12_CPU_DESCRIPTOR_HANDLE cpuHandle(uint64_t index);

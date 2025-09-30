@@ -64,7 +64,7 @@ void main( uint3 DTid : SV_DispatchThreadID )
         particle.acceleration = 0;
         particle.friction = 0.0;
         particle.dynamic = false;
-        particle.emissive = 0.6;
+        particle.emissive = 0.0;
         particle.albedo = float3(1, 0, 0);
         particle.reflection = 0.0;
         particle.visible = 1;
@@ -78,7 +78,7 @@ void main( uint3 DTid : SV_DispatchThreadID )
         particle.acceleration = 0;
         particle.friction = 0.0;
         particle.dynamic = false;
-        particle.emissive = 0.6;
+        particle.emissive = 0.0;
         particle.albedo = float3(0, 1, 0);
         particle.reflection = 0.0;
         particle.visible = 1;

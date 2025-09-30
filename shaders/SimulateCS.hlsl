@@ -90,8 +90,8 @@ void main( uint3 DTid : SV_DispatchThreadID )
     
     if (particle.dynamic)
     {
-        //Particles[DTid.x].acceleration = 0.001 * (float3(0, 0, 0) - particle.position);
-        Particles[DTid.x].emissive = abs(sin((sin(DTid.x + Time * .5) * 0.5)));
+        Particles[DTid.x].acceleration = 0.00001 * (float3(0, 0, 0) - particle.position);
+        //Particles[DTid.x].emissive = abs(sin((sin(DTid.x + Time * .5) * 0.5)));
         Particles[DTid.x].velocity += particle.acceleration;
         Particles[DTid.x].position += particle.velocity;
     }

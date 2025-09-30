@@ -94,9 +94,19 @@
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Compute</ShaderType>
       <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Release|x64'">6.0</ShaderModel>
       <VariableName Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">%(Filename)</VariableName>
-      <HeaderFileOutput Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(ProjectDir)/shaders/%(Filename).h</HeaderFileOutput>
+      <HeaderFileOutput Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(ProjectDir)/tmp/shaders/%(Filename).h</HeaderFileOutput>
       <VariableName Condition="'$(Configuration)|$(Platform)'=='Release|x64'">%(Filename)</VariableName>
-      <HeaderFileOutput Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(ProjectDir)/shaders/%(Filename).h</HeaderFileOutput>
+      <HeaderFileOutput Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(ProjectDir)/tmp/shaders/%(Filename).h</HeaderFileOutput>
+    </FxCompile>
+    <FxCompile Include="shaders\DepthOfFieldPS.hlsl">
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Pixel</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Pixel</ShaderType>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">6.0</ShaderModel>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Release|x64'">6.0</ShaderModel>
+      <VariableName Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">%(Filename)</VariableName>
+      <HeaderFileOutput Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(ProjectDir)/tmp/shaders/%(Filename).h</HeaderFileOutput>
+      <VariableName Condition="'$(Configuration)|$(Platform)'=='Release|x64'">%(Filename)</VariableName>
+      <HeaderFileOutput Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(ProjectDir)/tmp/shaders/%(Filename).h</HeaderFileOutput>
     </FxCompile>
     <FxCompile Include="shaders\InitParticlesCS.hlsl">
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Compute</ShaderType>
@@ -104,9 +114,9 @@
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Compute</ShaderType>
       <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Release|x64'">6.0</ShaderModel>
       <VariableName Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">%(Filename)</VariableName>
-      <HeaderFileOutput Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(ProjectDir)/shaders/%(Filename).h</HeaderFileOutput>
+      <HeaderFileOutput Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(ProjectDir)/tmp/shaders/%(Filename).h</HeaderFileOutput>
       <VariableName Condition="'$(Configuration)|$(Platform)'=='Release|x64'">%(Filename)</VariableName>
-      <HeaderFileOutput Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(ProjectDir)/shaders/%(Filename).h</HeaderFileOutput>
+      <HeaderFileOutput Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(ProjectDir)/tmp/shaders/%(Filename).h</HeaderFileOutput>
     </FxCompile>
     <FxCompile Include="shaders\ParticleBasePassCS.hlsl">
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Compute</ShaderType>
@@ -114,17 +124,17 @@
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Compute</ShaderType>
       <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Release|x64'">6.0</ShaderModel>
       <VariableName Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">%(Filename)</VariableName>
-      <HeaderFileOutput Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(ProjectDir)/shaders/%(Filename).h</HeaderFileOutput>
+      <HeaderFileOutput Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(ProjectDir)/tmp/shaders/%(Filename).h</HeaderFileOutput>
       <VariableName Condition="'$(Configuration)|$(Platform)'=='Release|x64'">%(Filename)</VariableName>
-      <HeaderFileOutput Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(ProjectDir)/shaders/%(Filename).h</HeaderFileOutput>
+      <HeaderFileOutput Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(ProjectDir)/tmp/shaders/%(Filename).h</HeaderFileOutput>
     </FxCompile>
     <FxCompile Include="shaders\RenderToScreenPS.hlsl">
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Pixel</ShaderType>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Pixel</ShaderType>
       <VariableName Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">%(Filename)</VariableName>
-      <HeaderFileOutput Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(ProjectDir)/shaders/%(Filename).h</HeaderFileOutput>
+      <HeaderFileOutput Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(ProjectDir)/tmp/shaders/%(Filename).h</HeaderFileOutput>
       <VariableName Condition="'$(Configuration)|$(Platform)'=='Release|x64'">%(Filename)</VariableName>
-      <HeaderFileOutput Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(ProjectDir)/shaders/%(Filename).h</HeaderFileOutput>
+      <HeaderFileOutput Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(ProjectDir)/tmp/shaders/%(Filename).h</HeaderFileOutput>
       <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">6.0</ShaderModel>
       <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Release|x64'">6.0</ShaderModel>
     </FxCompile>
@@ -132,9 +142,9 @@
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Vertex</ShaderType>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Vertex</ShaderType>
       <VariableName Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">%(Filename)</VariableName>
-      <HeaderFileOutput Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(ProjectDir)/shaders/%(Filename).h</HeaderFileOutput>
+      <HeaderFileOutput Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(ProjectDir)/tmp/shaders/%(Filename).h</HeaderFileOutput>
       <VariableName Condition="'$(Configuration)|$(Platform)'=='Release|x64'">%(Filename)</VariableName>
-      <HeaderFileOutput Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(ProjectDir)/shaders/%(Filename).h</HeaderFileOutput>
+      <HeaderFileOutput Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(ProjectDir)/tmp/shaders/%(Filename).h</HeaderFileOutput>
       <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">6.0</ShaderModel>
       <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Release|x64'">6.0</ShaderModel>
     </FxCompile>
@@ -145,8 +155,8 @@
       <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Release|x64'">6.0</ShaderModel>
       <VariableName Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">%(Filename)</VariableName>
       <VariableName Condition="'$(Configuration)|$(Platform)'=='Release|x64'">%(Filename)</VariableName>
-      <HeaderFileOutput Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(ProjectDir)/shaders/%(Filename).h</HeaderFileOutput>
-      <HeaderFileOutput Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(ProjectDir)/shaders/%(Filename).h</HeaderFileOutput>
+      <HeaderFileOutput Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(ProjectDir)/tmp/shaders/%(Filename).h</HeaderFileOutput>
+      <HeaderFileOutput Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(ProjectDir)/tmp/shaders/%(Filename).h</HeaderFileOutput>
     </FxCompile>
     <FxCompile Include="shaders\TemporalAACS.hlsl">
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Compute</ShaderType>
@@ -154,9 +164,9 @@
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Compute</ShaderType>
       <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Release|x64'">6.0</ShaderModel>
       <VariableName Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">%(Filename)</VariableName>
-      <HeaderFileOutput Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(ProjectDir)/shaders/%(Filename).h</HeaderFileOutput>
+      <HeaderFileOutput Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(ProjectDir)/tmp/shaders/%(Filename).h</HeaderFileOutput>
       <VariableName Condition="'$(Configuration)|$(Platform)'=='Release|x64'">%(Filename)</VariableName>
-      <HeaderFileOutput Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(ProjectDir)/shaders/%(Filename).h</HeaderFileOutput>
+      <HeaderFileOutput Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(ProjectDir)/tmp/shaders/%(Filename).h</HeaderFileOutput>
     </FxCompile>
     <FxCompile Include="shaders\TemporalReprojectionCS.hlsl">
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Compute</ShaderType>
@@ -164,9 +174,9 @@
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Compute</ShaderType>
       <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Release|x64'">6.0</ShaderModel>
       <VariableName Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">%(Filename)</VariableName>
-      <HeaderFileOutput Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(ProjectDir)/shaders/%(Filename).h</HeaderFileOutput>
+      <HeaderFileOutput Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(ProjectDir)/tmp/shaders/%(Filename).h</HeaderFileOutput>
       <VariableName Condition="'$(Configuration)|$(Platform)'=='Release|x64'">%(Filename)</VariableName>
-      <HeaderFileOutput Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(ProjectDir)/shaders/%(Filename).h</HeaderFileOutput>
+      <HeaderFileOutput Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(ProjectDir)/tmp/shaders/%(Filename).h</HeaderFileOutput>
     </FxCompile>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

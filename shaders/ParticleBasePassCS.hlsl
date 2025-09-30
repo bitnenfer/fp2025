@@ -6,6 +6,7 @@ RWTexture2D<float4> VelocityBuffer : register(u1);
 RWTexture2D<float4> PositionBuffer : register(u2);
 RWTexture2D<float4> NormalBuffer : register(u3);
 RWTexture2D<float> DepthBuffer : register(u4);
+
 ConstantBuffer<ConstantBufferData> ConstantData : register(b0);
 
 struct PathtraceOutput
@@ -239,12 +240,12 @@ void main(uint3 DTid : SV_DispatchThreadID)
         }
 #endif
     seed2 = uv + cos(offsetTime);
-    const int samples = 4;
-    float2 pxSize = (1 / ConstantData.resolution.xy) * 1.1;
+    const int samples = 2;
+    float2 pxSize = (1 / ConstantData.resolution.xy) * 1.5;
     for (int i = 0; i < samples; i++)
     {
         float offset = toRad(offsetTime + (float(i) / samples * 360.0));
-        float2 uvOffset = float2( /*cos(offset), sin(offset)*/rand2n() * 2 - 1) * pxSize;
+        float2 uvOffset = float2(cos(offset), sin(offset)) * pxSize;
 
         CreateRayFromUV(uv + uvOffset, ConstantData.invViewProjMtx, ConstantData.cameraPos, rayOrigin, rayDirection);
         PathtraceOutput ptResult = Pathtrace(rayOrigin, rayDirection);

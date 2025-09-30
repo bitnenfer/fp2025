@@ -1502,7 +1502,7 @@ void ni::DescriptorTable::allocDSVTex2D(ni::Resource& resource, DXGI_FORMAT form
     ni::getDevice()->CreateDepthStencilView(resource.apiResource, &dsvDesc, allocate().cpuHandle);
 }
 
-void ni::DescriptorTable::allocCBV(ni::Resource& resource, size_t sizeInBytes)
+void ni::DescriptorTable::allocCBVBuffer(ni::Resource& resource, size_t sizeInBytes)
 {
     D3D12_CONSTANT_BUFFER_VIEW_DESC cbvDesc = {};
     cbvDesc.BufferLocation = resource.apiResource->GetGPUVirtualAddress();
