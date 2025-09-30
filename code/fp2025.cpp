@@ -13,10 +13,21 @@
 #define IS_CPU 1
 #include "../shaders/ParticleConfig.h"
 
+inline UINT PIX_COLOR_INDEX(BYTE i) { return 0x00000000 | i; }
 
 int main()
 {
-	ni::init(1920, 1080, "FP2025", !true, true);
+	typedef void(WINAPI* BeginEventOnCommandList)(ID3D12GraphicsCommandList* commandList, UINT64 color, _In_ PCSTR formatString);
+	typedef void(WINAPI* EndEventOnCommandList)(ID3D12GraphicsCommandList* commandList);
+	typedef void(WINAPI* SetMarkerOnCommandList)(ID3D12GraphicsCommandList* commandList, UINT64 color, _In_ PCSTR formatString);
+
+
+	ni::init(1920, 1080, "FP2025", !true, !true);
+
+	HMODULE module = LoadLibrary(L"thirdparty/WinPixEventRuntime.dll");
+	BeginEventOnCommandList pixBeginEventOnCommandList = (BeginEventOnCommandList)GetProcAddress(module, "PIXBeginEventOnCommandList");
+	EndEventOnCommandList   pixEndEventOnCommandList = (EndEventOnCommandList)GetProcAddress(module, "PIXEndEventOnCommandList");
+	SetMarkerOnCommandList  pixSetMarkerOnCommandList = (SetMarkerOnCommandList)GetProcAddress(module, "PIXSetMarkerOnCommandList");
 
 	// Initialize particles
 	ni::ComputePipelineDesc initParticlesDesc = {};
@@ -34,6 +45,7 @@ int main()
 	simulateParticlesDesc.layout.addDescriptorTable(ni::DescriptorRange(
 		ni::DescriptorRangeEntry(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 1, 0, 0)
 	), D3D12_SHADER_VISIBILITY_ALL);
+	simulateParticlesDesc.layout.add32BitConstant(0, 0, 1, D3D12_SHADER_VISIBILITY_ALL);
 	simulateParticlesDesc.shader = { SimulateCS, sizeof(SimulateCS) };
 	ni::PipelineState* simulateParticles = ni::buildComputePipelineState(simulateParticlesDesc);
 
@@ -41,7 +53,7 @@ int main()
 	ni::ComputePipelineDesc basePassParticleDesc = {};
 	basePassParticleDesc.layout.addDescriptorTable(ni::DescriptorRange(
 		ni::DescriptorRangeEntry(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 0, 0),
-		ni::DescriptorRangeEntry(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 4, 0, 0),
+		ni::DescriptorRangeEntry(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 5, 0, 0),
 		ni::DescriptorRangeEntry(D3D12_DESCRIPTOR_RANGE_TYPE_CBV, 1, 0, 0)
 	), D3D12_SHADER_VISIBILITY_ALL);
 	basePassParticleDesc.shader = { ParticleBasePassCS, sizeof(ParticleBasePassCS) };
@@ -52,9 +64,9 @@ int main()
 	ni::Texture* normalBuffer = ni::createTexture(ni::getViewWidthUint(), ni::getViewHeightUint(), 1, nullptr, D3D12_RESOURCE_STATE_UNORDERED_ACCESS, DXGI_FORMAT_R32G32B32A32_FLOAT, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS);
 	ConstantBufferData sceneConstantBufferData = {};
 	ni::Float4x4 projMtx;
-	projMtx.perspective(ni::toRad(30.0f), ni::getViewAspectRatio(), 0.1f, 1000.0f);
-	ni::FlyCamera camera(ni::Float3(0, -20, -200));
-	camera.speedScale = 10.0f;
+	projMtx.perspective(ni::toRad(60.0f), ni::getViewAspectRatio(), 0.1f, 1000.0f);
+	ni::FlyCamera camera(ni::Float3(0, -0, -80));
+	camera.speedScale = 0.15f;
 	sceneConstantBufferData.resolution = ni::Float3(ni::getViewWidth(), ni::getViewHeight(), 1.0f);
 	sceneConstantBufferData.time = 0.0f;
 	ni::Buffer* sceneConstantBuffer = ni::createBuffer(sizeof(ConstantBufferData), ni::CONSTANT_BUFFER);
@@ -81,10 +93,12 @@ int main()
 	ni::Texture* historyM2Buffer = ni::createTexture(ni::getViewWidthUint(), ni::getViewHeightUint(), 1, nullptr, D3D12_RESOURCE_STATE_UNORDERED_ACCESS, DXGI_FORMAT_R32_FLOAT, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS);
 	ni::Texture* prevHistoryM1Buffer = ni::createTexture(ni::getViewWidthUint(), ni::getViewHeightUint(), 1, nullptr, D3D12_RESOURCE_STATE_UNORDERED_ACCESS, DXGI_FORMAT_R32_FLOAT, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS);
 	ni::Texture* prevHistoryM2Buffer = ni::createTexture(ni::getViewWidthUint(), ni::getViewHeightUint(), 1, nullptr, D3D12_RESOURCE_STATE_UNORDERED_ACCESS, DXGI_FORMAT_R32_FLOAT, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS);
+	ni::Texture* depthBuffer = ni::createTexture(ni::getViewWidthUint(), ni::getViewHeightUint(), 1, nullptr, D3D12_RESOURCE_STATE_UNORDERED_ACCESS, DXGI_FORMAT_R32_FLOAT, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS);
+	ni::Texture* prevDepthBuffer = ni::createTexture(ni::getViewWidthUint(), ni::getViewHeightUint(), 1, nullptr, D3D12_RESOURCE_STATE_UNORDERED_ACCESS, DXGI_FORMAT_R32_FLOAT, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS);
 
 	ni::ComputePipelineDesc temporalReprojectionDesc = {};
 	temporalReprojectionDesc.layout.addDescriptorTable(ni::DescriptorRange(
-		ni::DescriptorRangeEntry(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 9, 0, 0),
+		ni::DescriptorRangeEntry(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 11, 0, 0),
 		ni::DescriptorRangeEntry(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 3, 0, 0),
 		ni::DescriptorRangeEntry(D3D12_DESCRIPTOR_RANGE_TYPE_CBV, 1, 0, 0)
 	), D3D12_SHADER_VISIBILITY_ALL);
@@ -96,19 +110,19 @@ int main()
 	// A-Trous Filter
 	ni::ComputePipelineDesc AtrousFilterDesc = {};
 	AtrousFilterDesc.layout.addDescriptorTable(ni::DescriptorRange(
-		ni::DescriptorRangeEntry(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 4, 0, 0),
+		ni::DescriptorRangeEntry(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 5, 0, 0),
 		ni::DescriptorRangeEntry(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 1, 0, 0)
 	), D3D12_SHADER_VISIBILITY_ALL);
-	AtrousFilterDesc.layout.add32BitConstant(0, 0, 3, D3D12_SHADER_VISIBILITY_ALL);
-	AtrousFilterDesc.layout.add32BitConstant(1, 0, 1, D3D12_SHADER_VISIBILITY_ALL);
+	AtrousFilterDesc.layout.add32BitConstant(0, 0, 1, D3D12_SHADER_VISIBILITY_ALL);
+	AtrousFilterDesc.layout.add32BitConstant(1, 0, 3, D3D12_SHADER_VISIBILITY_ALL);
 	AtrousFilterDesc.shader = { ATrousFilterCS, sizeof(ATrousFilterCS) };
-	ni::PipelineState* AtrousFilter = ni::buildComputePipelineState(AtrousFilterDesc);
+	ni::PipelineState* atrousFilter = ni::buildComputePipelineState(AtrousFilterDesc);
 
 	// Temporal AA Setup
 	ni::ComputePipelineDesc temporalAADesc = {};
 	temporalAADesc.shader = { TemporalAACS, sizeof(TemporalAACS) };
 	temporalAADesc.layout.addDescriptorTable(ni::DescriptorRange(
-		ni::DescriptorRangeEntry(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 3, 0, 0),
+		ni::DescriptorRangeEntry(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 5, 0, 0),
 		ni::DescriptorRangeEntry(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 1, 0, 0)
 	), D3D12_SHADER_VISIBILITY_ALL);
 	temporalAADesc.layout.add32BitConstant(0, 0, 3, D3D12_SHADER_VISIBILITY_ALL);
@@ -131,9 +145,23 @@ int main()
 	renderToScreenDesc.layout.addStaticSampler(D3D12_FILTER_MIN_MAG_MIP_POINT, D3D12_TEXTURE_ADDRESS_MODE_CLAMP, 0, 0, D3D12_SHADER_VISIBILITY_PIXEL);
 	ni::PipelineState* renderToScreen = ni::buildGraphicsPipelineState(renderToScreenDesc);
 
+
+	
+	outputTexture->resource.apiResource->SetName(L"outputTexture");
+	resultTAA->resource.apiResource->SetName(L"resultTAA");
+
 	while (!ni::shouldQuit())
 	{
 		ni::pollEvents();
+
+		if (ni::keyDown(ni::SHIFT))
+		{
+			camera.speedScale = 0.05f;
+		}
+		else
+		{
+			camera.speedScale = 0.15f;
+		}
 
 		// Update CPU scene data
 		camera.update();
@@ -181,12 +209,15 @@ int main()
 			}
 
 			// Run Simulation
+			pixBeginEventOnCommandList(commandList, PIX_COLOR_INDEX(0), "Particle Simulation");
 			commandList->SetPipelineState(simulateParticles->pso);
 			commandList->SetComputeRootSignature(simulateParticles->rootSignature);
 			ni::DescriptorTable simulateParticlesDescriptorTable = descriptorAllocator->allocateDescriptorTable(1);
 			simulateParticlesDescriptorTable.allocUAVBuffer(particleBuffer->resource, nullptr, DXGI_FORMAT_UNKNOWN, 0, NUM_PARTICLES, sizeof(ParticleData), 0);
 			commandList->SetComputeRootDescriptorTable(0, simulateParticlesDescriptorTable.gpuBaseHandle);
+			commandList->SetComputeRoot32BitConstants(1, 1, &sceneConstantBufferData.time, 0);
 			commandList->Dispatch(NUM_PARTICLES / 32, 1, 1);
+			pixEndEventOnCommandList(commandList);
 
 			resourceBarrier.transition(particleBuffer->resource, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 			resourceBarrier.transition(outputTexture->resource, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
@@ -194,19 +225,23 @@ int main()
 			resourceBarrier.flush(commandList);
 
 			// Render Scene
+			pixBeginEventOnCommandList(commandList, PIX_COLOR_INDEX(1), "Render Base Scene");
 			commandList->SetPipelineState(basePassParticle->pso);
 			commandList->SetComputeRootSignature(basePassParticle->rootSignature);
-			ni::DescriptorTable basePassDescriptorTable = descriptorAllocator->allocateDescriptorTable(6);
+			ni::DescriptorTable basePassDescriptorTable = descriptorAllocator->allocateDescriptorTable(7);
 			basePassDescriptorTable.allocSRVBuffer(particleBuffer->resource, DXGI_FORMAT_UNKNOWN, 0, NUM_PARTICLES, sizeof(ParticleData));
 			basePassDescriptorTable.allocUAVTex2D(outputTexture->resource, nullptr, DXGI_FORMAT_R8G8B8A8_UNORM, 0, 0);
 			basePassDescriptorTable.allocUAVTex2D(velocityBuffer->resource, nullptr, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 0);
 			basePassDescriptorTable.allocUAVTex2D(positionBuffer->resource, nullptr, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 0);
 			basePassDescriptorTable.allocUAVTex2D(normalBuffer->resource, nullptr, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 0);
+			basePassDescriptorTable.allocUAVTex2D(depthBuffer->resource, nullptr, DXGI_FORMAT_R32_FLOAT, 0, 0);
 			basePassDescriptorTable.allocCBV(sceneConstantBuffer->resource, sceneConstantBuffer->resource.apiResource->GetDesc().Width);
 			commandList->SetComputeRootDescriptorTable(0, basePassDescriptorTable.gpuBaseHandle);
 			commandList->Dispatch((uint32_t)(sceneConstantBufferData.resolution.x / 32.0f), (uint32_t)(sceneConstantBufferData.resolution.y / 32.0f)+1, 1);
+			pixEndEventOnCommandList(commandList);
 
 			// Temporal Reprojection
+			pixBeginEventOnCommandList(commandList, PIX_COLOR_INDEX(2), "Temporal Reprojection");
 			resourceBarrier.transition(outputTexture->resource, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 			resourceBarrier.transition(velocityBuffer->resource, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 			resourceBarrier.transition(historyBuffer->resource, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
@@ -216,16 +251,16 @@ int main()
 			resourceBarrier.transition(prevNormalBuffer->resource, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 			resourceBarrier.transition(prevHistoryM1Buffer->resource, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 			resourceBarrier.transition(prevHistoryM2Buffer->resource, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-
+			resourceBarrier.transition(depthBuffer->resource, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+			resourceBarrier.transition(prevDepthBuffer->resource, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 			resourceBarrier.transition(resultTAA->resource, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 			resourceBarrier.transition(historyM1Buffer->resource, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 			resourceBarrier.transition(historyM2Buffer->resource, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
-
 			resourceBarrier.flush(commandList);
 
 			commandList->SetPipelineState(temporalReprojection->pso);
 			commandList->SetComputeRootSignature(temporalReprojection->rootSignature);
-			ni::DescriptorTable temporalReprojectionDescriptorTable = descriptorAllocator->allocateDescriptorTable(13);
+			ni::DescriptorTable temporalReprojectionDescriptorTable = descriptorAllocator->allocateDescriptorTable(15);
 			temporalReprojectionDescriptorTable.allocSRVTex2D(outputTexture->resource, DXGI_FORMAT_R8G8B8A8_UNORM, 0, 1, 0, 0.0f);
 			temporalReprojectionDescriptorTable.allocSRVTex2D(velocityBuffer->resource, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 1, 0, 0.0f);
 			temporalReprojectionDescriptorTable.allocSRVTex2D(historyBuffer->resource, DXGI_FORMAT_R8G8B8A8_UNORM, 0, 1, 0, 0.0f);
@@ -235,68 +270,76 @@ int main()
 			temporalReprojectionDescriptorTable.allocSRVTex2D(prevNormalBuffer->resource, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 1, 0, 0.0f);
 			temporalReprojectionDescriptorTable.allocSRVTex2D(prevHistoryM1Buffer->resource, DXGI_FORMAT_R32_FLOAT, 0, 1, 0, 0.0f);
 			temporalReprojectionDescriptorTable.allocSRVTex2D(prevHistoryM2Buffer->resource, DXGI_FORMAT_R32_FLOAT, 0, 1, 0, 0.0f);
+			temporalReprojectionDescriptorTable.allocSRVTex2D(depthBuffer->resource, DXGI_FORMAT_R32_FLOAT, 0, 1, 0, 0.0f);
+			temporalReprojectionDescriptorTable.allocSRVTex2D(prevDepthBuffer->resource, DXGI_FORMAT_R32_FLOAT, 0, 1, 0, 0.0f);
 			temporalReprojectionDescriptorTable.allocUAVTex2D(resultTAA->resource, nullptr, DXGI_FORMAT_R8G8B8A8_UNORM, 0, 0);
 			temporalReprojectionDescriptorTable.allocUAVTex2D(historyM1Buffer->resource, nullptr, DXGI_FORMAT_R32_FLOAT, 0, 0);
 			temporalReprojectionDescriptorTable.allocUAVTex2D(historyM2Buffer->resource, nullptr, DXGI_FORMAT_R32_FLOAT, 0, 0);
 			temporalReprojectionDescriptorTable.allocCBV(sceneConstantBuffer->resource, sceneConstantBuffer->resource.apiResource->GetDesc().Width);
 			commandList->SetComputeRootDescriptorTable(0, temporalReprojectionDescriptorTable.gpuBaseHandle);
 			commandList->Dispatch((uint32_t)(sceneConstantBufferData.resolution.x / 32.0f), (uint32_t)(sceneConstantBufferData.resolution.y / 32.0f) + 1, 1);
+			pixEndEventOnCommandList(commandList);
 
-			resourceBarrier.transition(resultTAA->resource, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-			resourceBarrier.transition(outputTexture->resource, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+			resourceBarrier.transition(historyM1Buffer->resource, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+			resourceBarrier.transition(historyM2Buffer->resource, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 			resourceBarrier.flush(commandList);
 
+			// A-trous filter passes
+			pixBeginEventOnCommandList(commandList, PIX_COLOR_INDEX(3), "A-Trous Filter Passes");
+			ni::Texture* atrousInputOutput[2] = { resultTAA, outputTexture };
+
+			commandList->SetPipelineState(atrousFilter->pso);
+			commandList->SetComputeRootSignature(atrousFilter->rootSignature);
+			
+			for (uint32_t index = 0; index < 5; ++index)
+			{
+				ni::Texture* input = atrousInputOutput[index % 2];
+				ni::Texture* output = atrousInputOutput[(index + 1) % 2];
+
+				resourceBarrier.transition(resultTAA->resource, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+				resourceBarrier.transition(outputTexture->resource, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+				resourceBarrier.flush(commandList);
+
+				ni::DescriptorTable atrousFilterDescriptorTable = descriptorAllocator->allocateDescriptorTable(7);
+				atrousFilterDescriptorTable.allocSRVTex2D(resultTAA->resource, DXGI_FORMAT_R8G8B8A8_UNORM, 0, 1, 0, 0.0f);
+				atrousFilterDescriptorTable.allocSRVTex2D(normalBuffer->resource, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 1, 0, 0.0f);
+				atrousFilterDescriptorTable.allocSRVTex2D(historyM1Buffer->resource, DXGI_FORMAT_R32_FLOAT, 0, 1, 0, 0.0f);
+				atrousFilterDescriptorTable.allocSRVTex2D(historyM2Buffer->resource, DXGI_FORMAT_R32_FLOAT, 0, 1, 0, 0.0f);
+				atrousFilterDescriptorTable.allocSRVTex2D(depthBuffer->resource, DXGI_FORMAT_R32_FLOAT, 0, 1, 0, 0.0f);
+				atrousFilterDescriptorTable.allocUAVTex2D(outputTexture->resource, nullptr, DXGI_FORMAT_R8G8B8A8_UNORM, 0, 0);
+				commandList->SetComputeRootDescriptorTable(0, atrousFilterDescriptorTable.gpuBaseHandle);
+				commandList->SetComputeRoot32BitConstant(1, index+1, 0);
+				commandList->SetComputeRoot32BitConstants(2, 3, &sceneConstantBufferData.resolution, 0);
+				commandList->Dispatch((uint32_t)(sceneConstantBufferData.resolution.x / 32.0f), (uint32_t)(sceneConstantBufferData.resolution.y / 32.0f) + 1, 1);
+			}
+
+			pixEndEventOnCommandList(commandList);
+
+			resourceBarrier.transition(outputTexture->resource, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+			resourceBarrier.transition(resultTAA->resource, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+			resourceBarrier.flush(commandList);
+
+			pixBeginEventOnCommandList(commandList, PIX_COLOR_INDEX(4), "TemporalAA");
 			commandList->SetPipelineState(temporalAA->pso);
 			commandList->SetComputeRootSignature(temporalAA->rootSignature);
-			ni::DescriptorTable temporalAADescriptorTable = descriptorAllocator->allocateDescriptorTable(4);
-			temporalAADescriptorTable.allocSRVTex2D(resultTAA->resource, DXGI_FORMAT_R8G8B8A8_UNORM, 0, 1, 0, 0.0f);
+			ni::DescriptorTable temporalAADescriptorTable = descriptorAllocator->allocateDescriptorTable(6);
+			temporalAADescriptorTable.allocSRVTex2D(outputTexture->resource, DXGI_FORMAT_R8G8B8A8_UNORM, 0, 1, 0, 0.0f);
 			temporalAADescriptorTable.allocSRVTex2D(velocityBuffer->resource, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 1, 0, 0.0f);
 			temporalAADescriptorTable.allocSRVTex2D(historyBuffer->resource, DXGI_FORMAT_R8G8B8A8_UNORM, 0, 1, 0, 0.0f);
-			temporalAADescriptorTable.allocUAVTex2D(outputTexture->resource, nullptr, DXGI_FORMAT_R8G8B8A8_UNORM, 0, 0);
+			temporalAADescriptorTable.allocSRVTex2D(depthBuffer->resource, DXGI_FORMAT_R32_FLOAT, 0, 1, 0, 0.0f);
+			temporalAADescriptorTable.allocSRVTex2D(prevDepthBuffer->resource, DXGI_FORMAT_R32_FLOAT, 0, 1, 0, 0.0f);
+			temporalAADescriptorTable.allocUAVTex2D(resultTAA->resource, nullptr, DXGI_FORMAT_R8G8B8A8_UNORM, 0, 0);
 			commandList->SetComputeRootDescriptorTable(0, temporalAADescriptorTable.gpuBaseHandle);
 			commandList->SetComputeRoot32BitConstants(1, 3, &sceneConstantBufferData.resolution, 0);
 			commandList->Dispatch((uint32_t)(sceneConstantBufferData.resolution.x / 32.0f), (uint32_t)(sceneConstantBufferData.resolution.y / 32.0f)+1, 1);
+			pixEndEventOnCommandList(commandList);
 
-
+			pixBeginEventOnCommandList(commandList, PIX_COLOR_INDEX(5), "Copy Next Frame Resources");
 			resourceBarrier.transition(historyBuffer->resource, D3D12_RESOURCE_STATE_COPY_DEST);
-			resourceBarrier.transition(outputTexture->resource, D3D12_RESOURCE_STATE_COPY_SOURCE);
+			resourceBarrier.transition(resultTAA->resource, D3D12_RESOURCE_STATE_COPY_SOURCE);
 			resourceBarrier.flush(commandList);
-			commandList->CopyResource(historyBuffer->resource.apiResource, outputTexture->resource.apiResource);
-#if 0
-			// Render to screen
-			commandList->SetPipelineState(renderToScreen->pso);
-			commandList->SetGraphicsRootSignature(renderToScreen->rootSignature);
-			D3D12_VERTEX_BUFFER_VIEW triangleVBV;
-			triangleVBV.BufferLocation = triangleVB->resource.apiResource->GetGPUVirtualAddress();
-			triangleVBV.SizeInBytes = (UINT)triangleVB->sizeInBytes;
-			triangleVBV.StrideInBytes = sizeof(ni::Float3);
-			commandList->IASetVertexBuffers(0, 1, &triangleVBV);
-			commandList->IASetPrimitiveTopology(D3D10_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-			commandList->OMSetRenderTargets(1, &rtvDescriptorTable.cpuBaseHandle, true, nullptr);
-			D3D12_RECT scissor;
-			scissor.left = 0;
-			scissor.right = ni::getViewWidthUint();
-			scissor.top = 0;
-			scissor.bottom = ni::getViewHeightUint();
-			commandList->RSSetScissorRects(1, &scissor);
-			D3D12_VIEWPORT viewport;
-			viewport.Width = ni::getViewWidth();
-			viewport.Height = ni::getViewHeight();
-			viewport.TopLeftX = 0;
-			viewport.TopLeftY = 0;
-			viewport.MinDepth = 0.1f;
-			viewport.MaxDepth = 1000.0f;
-			commandList->RSSetViewports(1, &viewport);
-			ni::DescriptorTable renderToScreenDescriptorTable = descriptorAllocator->allocateDescriptorTable(1);
-			renderToScreenDescriptorTable.allocSRVTex2D(velocityBuffer->resource, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 1, 0, 0.0f);
-			resourceBarrier.transition(velocityBuffer->resource, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
-			resourceBarrier.flush(commandList);
-			commandList->SetGraphicsRootDescriptorTable(0, renderToScreenDescriptorTable.gpuBaseHandle);
-			commandList->DrawInstanced(3, 1, 0, 0);
+			commandList->CopyResource(historyBuffer->resource.apiResource, resultTAA->resource.apiResource);
 
-			resourceBarrier.transition(velocityBuffer->resource, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
-			resourceBarrier.transition(particleBuffer->resource, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
-#else
 			resourceBarrier.transition(particleBuffer->resource, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 			resourceBarrier.transition(outputTexture->resource, D3D12_RESOURCE_STATE_COPY_SOURCE);
 			resourceBarrier.transition(ni::getCurrentBackbuffer()->resource, D3D12_RESOURCE_STATE_COPY_DEST);
@@ -308,6 +351,8 @@ int main()
 			resourceBarrier.transition(prevNormalBuffer->resource, D3D12_RESOURCE_STATE_COPY_DEST);
 			resourceBarrier.transition(prevHistoryM1Buffer->resource, D3D12_RESOURCE_STATE_COPY_DEST);
 			resourceBarrier.transition(prevHistoryM2Buffer->resource, D3D12_RESOURCE_STATE_COPY_DEST);
+			resourceBarrier.transition(depthBuffer->resource, D3D12_RESOURCE_STATE_COPY_SOURCE);
+			resourceBarrier.transition(prevDepthBuffer->resource, D3D12_RESOURCE_STATE_COPY_DEST);
 			resourceBarrier.flush(commandList);
 
 			commandList->CopyResource(ni::getCurrentBackbuffer()->resource.apiResource, outputTexture->resource.apiResource);
@@ -315,13 +360,16 @@ int main()
 			commandList->CopyResource(prevNormalBuffer->resource.apiResource, normalBuffer->resource.apiResource);
 			commandList->CopyResource(prevHistoryM1Buffer->resource.apiResource, historyM1Buffer->resource.apiResource);
 			commandList->CopyResource(prevHistoryM2Buffer->resource.apiResource, historyM2Buffer->resource.apiResource);
-#endif
+			commandList->CopyResource(prevDepthBuffer->resource.apiResource, depthBuffer->resource.apiResource);
+
 			resourceBarrier.transition(positionBuffer->resource, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 			resourceBarrier.transition(normalBuffer->resource, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 			resourceBarrier.transition(prevPositionBuffer->resource, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 			resourceBarrier.transition(prevNormalBuffer->resource, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+			resourceBarrier.transition(depthBuffer->resource, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 			resourceBarrier.transition(ni::getCurrentBackbuffer()->resource, D3D12_RESOURCE_STATE_PRESENT);
 			resourceBarrier.flush(commandList);
+			pixEndEventOnCommandList(commandList);
 
 			ni::endFrame();
 
@@ -339,8 +387,10 @@ int main()
 
 	ni::waitForAllFrames();
 
-	ni::destroyPipelineState(AtrousFilter);
+	ni::destroyPipelineState(atrousFilter);
 	ni::destroyPipelineState(temporalReprojection);
+	ni::destroyTexture(depthBuffer);
+	ni::destroyTexture(prevDepthBuffer);
 	ni::destroyTexture(historyM1Buffer);
 	ni::destroyTexture(historyM2Buffer);
 	ni::destroyTexture(prevHistoryM1Buffer);

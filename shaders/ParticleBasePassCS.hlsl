@@ -5,6 +5,7 @@ RWTexture2D<float4> OutputTexture : register(u0);
 RWTexture2D<float4> VelocityBuffer : register(u1);
 RWTexture2D<float4> PositionBuffer : register(u2);
 RWTexture2D<float4> NormalBuffer : register(u3);
+RWTexture2D<float> DepthBuffer : register(u4);
 ConstantBuffer<ConstantBufferData> ConstantData : register(b0);
 
 struct PathtraceOutput
@@ -21,7 +22,7 @@ void CreateRayFromUV(float2 uv, float4x4 invViewProj, float3 cameraPosition, out
     rayDirection = normalize(worldPos.xyz - cameraPosition);
 }
 
-bool IntersectsParticle(float3 RayOrigin, float3 RayDirection, in ParticleData Particle, out float3 OutPosition, out float3 OutNormal)
+bool IntersectsParticle(float3 RayOrigin, float3 RayDirection, in ParticleData Particle, out float3 OutPosition, out float3 OutNormal, out float OutDist)
 {
     float3 oc = RayOrigin - Particle.position;
     float a = dot(RayDirection, RayDirection);
@@ -32,6 +33,7 @@ bool IntersectsParticle(float3 RayOrigin, float3 RayDirection, in ParticleData P
     {
         OutPosition = float3(0.0, 0.0, 0.0);
         OutNormal = float3(0.0, 0.0, 0.0);
+        OutDist = 0;
         return false;
     }
     else
@@ -44,11 +46,12 @@ bool IntersectsParticle(float3 RayOrigin, float3 RayDirection, in ParticleData P
         {
             OutPosition = float3(0.0, 0.0, 0.0);
             OutNormal = float3(0.0, 0.0, 0.0);
+            OutDist = 0;
             return false;
         }
         OutPosition = RayOrigin + t * RayDirection;
         OutNormal = normalize(OutPosition - Particle.position);
-
+        OutDist = t;
         return true;
     }
 }
@@ -59,11 +62,16 @@ bool Trace(float3 rayOrigin, float3 rayDirection, out ParticleData OutParticle, 
     float lastDepth = 3.402823466e+38F;
     for (int i = 0; i < NUM_PARTICLES; i++)
     {
+        if (!Particles[i].visible)
+        {
+            continue;
+        }
+        
         float3 hitPosition;
         float3 hitNormal;
-        if (IntersectsParticle(rayOrigin, rayDirection, Particles[i], hitPosition, hitNormal))
+        float dist = 0.0;
+        if (IntersectsParticle(rayOrigin, rayDirection, Particles[i], hitPosition, hitNormal, dist))
         {
-            float dist = length(hitPosition - ConstantData.cameraPos);
             if (dist < lastDepth)
             {
                 OutParticle = Particles[i];
@@ -129,17 +137,17 @@ PathtraceOutput Pathtrace(float3 rayOrigin, float3 rayDirection)
 {
     ParticleData particle;
     float3 luminance = 1;
-    float3 hitNormal;
-    float3 hitPosition;
+    float3 hitNormal = 0;
+    float3 hitPosition = 0;
     PathtraceOutput output;
     output.color = 0;
         
-    for (int bounce = 0; bounce < 2; ++bounce)
+    for (int bounce = 0; bounce < 3; ++bounce)
     {
         if (Trace(rayOrigin, rayDirection, particle, hitPosition, hitNormal))
         {
             rayDirection = lerp(GetCosineWeightedSample(hitNormal), normalize(reflect(rayDirection, hitNormal)), particle.reflection);
-            rayOrigin = hitPosition + rayDirection * 0.1;
+            rayOrigin = hitPosition + rayDirection * 1e-3;
             luminance *= particle.albedo;
             
             if (particle.emissive > 0)
@@ -150,6 +158,7 @@ PathtraceOutput Pathtrace(float3 rayOrigin, float3 rayDirection)
         else
         {
             output.color += luminance * GetBackground(rayDirection);
+            break;
         }
     }
 
@@ -164,11 +173,10 @@ bool CalcPositionNormalAndVelocity(float2 uv, out float3 outPosition, out float3
     
     ParticleData particle;
     particle.id = 0;
-    float3 hitNormal = 0;
-    float3 hitPosition = 0;
-    bool result = false;
+    float3 hitNormal = -rayDirection;
+    float3 hitPosition = rayOrigin + rayDirection * 3.402823466e+38F;
+    bool result = Trace(rayOrigin, rayDirection, particle, hitPosition, hitNormal);
     
-    if (Trace(rayOrigin, rayDirection, particle, hitPosition, hitNormal))
     {
         outPosition = hitPosition;
         outNormal = hitNormal;
@@ -179,11 +187,10 @@ bool CalcPositionNormalAndVelocity(float2 uv, out float3 outPosition, out float3
         CreateRayFromUV(uv, ConstantData.prevInvViewProjMtx, ConstantData.prevCameraPos, prevRayOrigin, prevRayDirection);
         
         ParticleData prevParticle;
-        float3 prevHitNormal;
-        float3 prevHitPosition;
+        float3 prevHitNormal = -prevRayDirection;
+        float3 prevHitPosition = prevRayOrigin + prevRayDirection * 3.402823466e+38F;
         Trace(prevRayOrigin, prevRayDirection, prevParticle, prevHitPosition, prevHitNormal);
-               
-        result = true;
+        
     }
     
     float4 prevPos = mul(ConstantData.prevViewProjMtx, float4(hitPosition, 1));
@@ -210,11 +217,11 @@ void main(uint3 DTid : SV_DispatchThreadID)
     PathtraceOutput output;
     output.color = 0;
     
-    if (CalcPositionNormalAndVelocity(uv, hitPosition, hitNormal, hitVelocity, hitParticle))
+    bool result = CalcPositionNormalAndVelocity(uv, hitPosition, hitNormal, hitVelocity, hitParticle);
     {
         float4 clipSpacePos = mul(ConstantData.viewProjMtx, float4(hitPosition, 1.0));
         float3 ndcHit = clipSpacePos.xyz / clipSpacePos.w;
-        depth = ndcHit.z;
+        depth = result ? ndcHit.z : 1;
         
         float4 prevPos = mul(ConstantData.viewProjMtx, float4(hitParticle.prevPosition, 1));
         float4 currPos = mul(ConstantData.viewProjMtx, float4(hitParticle.position, 1));
@@ -226,7 +233,7 @@ void main(uint3 DTid : SV_DispatchThreadID)
     
     float offsetTime = ConstantData.time;
 #if 0
-        if ((DTid.x % 1) == 0 || (DTid.y % 1) == 0)
+        if ((DTid.x % 9) == 0 )
         {
             offsetTime = 1;
         }
@@ -237,7 +244,7 @@ void main(uint3 DTid : SV_DispatchThreadID)
     for (int i = 0; i < samples; i++)
     {
         float offset = toRad(offsetTime + (float(i) / samples * 360.0));
-        float2 uvOffset = float2(cos(offset), sin(offset)) * pxSize;
+        float2 uvOffset = float2( /*cos(offset), sin(offset)*/rand2n() * 2 - 1) * pxSize;
 
         CreateRayFromUV(uv + uvOffset, ConstantData.invViewProjMtx, ConstantData.cameraPos, rayOrigin, rayDirection);
         PathtraceOutput ptResult = Pathtrace(rayOrigin, rayDirection);
@@ -245,9 +252,9 @@ void main(uint3 DTid : SV_DispatchThreadID)
     }
     output.color /= float(samples);
     
-    OutputTexture[DTid.xy] = float4(output.color, depth);
+    OutputTexture[DTid.xy] = float4(output.color, 1);
     VelocityBuffer[DTid.xy] = float4(hitVelocity, 0, 1);
     PositionBuffer[DTid.xy] = float4(hitPosition, float(hitParticle.id));
     NormalBuffer[DTid.xy] = float4(hitNormal, 1);
-
+    DepthBuffer[DTid.xy] = depth;
 }

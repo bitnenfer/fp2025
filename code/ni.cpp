@@ -2533,7 +2533,7 @@ namespace ni {
         float moveDirForward = ni::atan2(direction.z, direction.x);
         float moveDirSide = ni::atan2(direction.z, direction.x) + (ni::PI / 2.0f);
 
-        velocity *= 0.3f;
+        velocity *= 0.97f;
 
         if (ni::keyDown(ni::W)) {
             velocity.x += moveSpeed * ni::cos(moveDirForward);

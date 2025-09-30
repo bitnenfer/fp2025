@@ -9,6 +9,8 @@ Texture2D<float4> PrevPositionBuffer : register(t5);
 Texture2D<float4> PrevNormalBuffer : register(t6);
 Texture2D<float> HistoryM1Prev : register(t7);
 Texture2D<float> HistoryM2Prev : register(t8);
+Texture2D<float> DepthBuffer : register(t9);
+Texture2D<float> PrevDepthBuffer : register(t10);
 
 RWTexture2D<float4> ResultTexture : register(u0);
 RWTexture2D<float> HistoryM1Out : register(u1);
@@ -39,7 +41,7 @@ void main( uint3 DTid : SV_DispatchThreadID )
     float3 ncurr = normalize(NormalBuffer[px].rgb);
     float3 pcurr = positionAndId.xyz;
     uint idcurr = uint(positionAndId.w);
-    float zcurr = currentFrameAndDepth.w;
+    float zcurr = DepthBuffer[px].r;
     float2 vel = VelocityBuffer[px].xy;
     float2 uvPrev = uv + vel;
     
@@ -58,10 +60,10 @@ void main( uint3 DTid : SV_DispatchThreadID )
         float3 nprev = normalize(PrevNormalBuffer.SampleLevel(linearClamp, uvPrev, 0).rgb);
         float3 pprev = PrevPositionBuffer.SampleLevel(linearClamp, uvPrev, 0).rgb;
         uint idprev = uint(PrevPositionBuffer.SampleLevel(pointClamp, uvPrev, 0).w);
-        float zprev = prevFrameAndDepth.w;
+        float zprev = PrevDepthBuffer.SampleLevel(linearClamp, uvPrev, 0).r;
         float ndot = dot(ncurr, nprev);
         float dz = abs(zcurr - zprev);
-        const float zt = 0.004;
+        const float zt = 0.002;
         float dzThr = max(zt * zcurr, zt * 0.5);
         
         const float nt = 0.9;
@@ -120,7 +122,7 @@ void main( uint3 DTid : SV_DispatchThreadID )
         M1 = lerp(Ycurr, m1prev, 1 - blend);
         M2 = lerp(Ycurr * Ycurr, m2prev, 1 - blend);
     }
-    ResultTexture[px] = float4(Cout, zcurr);
+    ResultTexture[px] = float4(Cout, 1);
     HistoryM1Out[px] = M1;
     HistoryM2Out[px] = M2;
 }

@@ -1,6 +1,9 @@
 Texture2D<float4> CurrentFrame : register(t0);
 Texture2D<float4> VelocityBuffer : register(t1);
 Texture2D<float4> HistoryBuffer : register(t2);
+Texture2D<float> DepthBuffer : register(t3);
+Texture2D<float> PrevDepthBuffer : register(t4);
+
 RWTexture2D<float4> ResultTexture : register(u0);
 const float3 Resolution : register(b0);
 
@@ -68,12 +71,12 @@ float4 GetCurrentFrame(int2 uv)
 void main( uint3 DTid : SV_DispatchThreadID )
 {
     float4 result = 0;
-    float GlobalBlendFactor = 0.7;
+    float GlobalBlendFactor = 0.5;
     float2 currUv = (float2(DTid.xy) + 0.5) / (Resolution).xy;
     float2 velocity = VelocityBuffer[DTid.xy].xy / (Resolution).xy;
     float2 prevUv = currUv + velocity;
-    float currDepth = CurrentFrame[DTid.xy].w;
-    float prevDepth = HistoryBuffer[DTid.xy].w;
+    float currDepth = DepthBuffer[DTid.xy].r;
+    float prevDepth = PrevDepthBuffer[DTid.xy].r;
     float4 currentColor = CurrentFrame[DTid.xy];
     float4 historyColor = HistoryBuffer[prevUv];
     currentColor = RGBAToYCoCg(currentColor);
@@ -131,7 +134,5 @@ void main( uint3 DTid : SV_DispatchThreadID )
 	float blendFactor = GlobalBlendFactor;
 	result = YCoCgToRGBA(blendFactor * currentColor + (1 - blendFactor) * historyColor);
 #endif
-    result.w = currDepth;
-
     ResultTexture[DTid.xy] = (result);
 }

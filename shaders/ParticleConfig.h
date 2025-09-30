@@ -1,4 +1,4 @@
-#define NUM_PARTICLES (32*2)
+#define NUM_PARTICLES (32*6)
 
 #ifdef IS_CPU
 typedef ni::Float3 float3;
@@ -20,6 +20,7 @@ struct ParticleData
 	float emissive;
 	uint id;
 	uint dynamic;
+	uint visible;
 };
 
 struct ConstantBufferData
