@@ -240,8 +240,8 @@ void main(uint3 DTid : SV_DispatchThreadID)
         }
 #endif
     seed2 = uv + cos(offsetTime);
-    const int samples = 2;
-    float2 pxSize = (1 / ConstantData.resolution.xy) * 1.5;
+    const int samples = ConstantData.sampleCount;
+    float2 pxSize = (1 / ConstantData.resolution.xy) * 0.5;
     for (int i = 0; i < samples; i++)
     {
         float offset = toRad(offsetTime + (float(i) / samples * 360.0));

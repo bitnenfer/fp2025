@@ -71,7 +71,7 @@ float4 GetCurrentFrame(int2 uv)
 void main( uint3 DTid : SV_DispatchThreadID )
 {
     float4 result = 0;
-    float GlobalBlendFactor = 0.5;
+    float GlobalBlendFactor = 1;
     float2 currUv = (float2(DTid.xy) + 0.5) / (Resolution).xy;
     float2 velocity = VelocityBuffer[DTid.xy].xy / (Resolution).xy;
     float2 prevUv = currUv + velocity;

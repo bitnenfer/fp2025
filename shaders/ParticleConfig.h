@@ -1,4 +1,7 @@
-#define NUM_PARTICLES (32*10)
+#ifndef _PARTICLE_CONFIG_H_
+#define _PARTICLE_CONFIG_H_
+
+#define NUM_PARTICLES (32*1)
 
 #ifdef IS_CPU
 typedef ni::Float3 float3;
@@ -38,6 +41,7 @@ struct ConstantBufferData
 	float3 resolution;
 	float time;
 	float frame;
+	uint sampleCount;
 };
 
 struct DepthOfFieldData
@@ -50,6 +54,15 @@ struct DepthOfFieldData
 	float maxDist;
 };
 
+struct SimulationData
+{
+	uint scene;
+	uint frame;// 0 = Don't run simulation (animation) and init particles for specific scene. >1 Run simulation for specific scene.
+	float time;
+};
+
 #ifndef IS_CPU
 float toRad(float d) { return 3.14159265359f * d / 180.0f; }
+#endif
+
 #endif

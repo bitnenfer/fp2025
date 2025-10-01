@@ -5,8 +5,9 @@ Texture2D<float> M2 : register(t3);
 Texture2D<float> DepthBuffer : register(t4);
 
 RWTexture2D<float4> ResultTexture : register(u0);
-const int IterStep : register(b0);
-const float3 Resolution : register(b1);
+
+const int IterStep;
+const float3 Resolution;
 
 float3 AtrousIter(int2 px, int step)
 {
@@ -29,7 +30,7 @@ float3 AtrousIter(int2 px, int step)
     [unroll]
     for (int i = 0; i < 25; i++)
     {
-        int2 q = clamp(px + taps[i] * step, int2(0, 0), int2(1920, 1080) - 1);
+        int2 q = clamp(px + taps[i] * step, int2(0, 0), int2(Resolution.xy) - 1);
         float3 Cq = CurrentFrame[q].rgb;
         float3 Nq = NormalBuffer[q].xyz;
         float Zq = DepthBuffer[q].r;
@@ -50,7 +51,7 @@ float3 AtrousIter(int2 px, int step)
 [numthreads(32, 32, 1)]
 void main( uint3 DTid : SV_DispatchThreadID )
 {
-    if (DTid.x >= 1920 || DTid.y >= 1080)
+    if (DTid.x >= Resolution.x || DTid.y >= Resolution.y)
         return;
     
     ResultTexture[DTid.xy] = float4(AtrousIter(DTid.xy, IterStep), 1);

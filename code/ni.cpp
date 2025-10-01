@@ -1185,6 +1185,7 @@ ni::Texture* ni::createTexture(uint32_t width, uint32_t height, uint32_t depth, 
         clearValue.Color[1] = 0.0f;
         clearValue.Color[2] = 0.0f;
         clearValue.Color[3] = 1.0f;
+        clearValue.Format = dxgiFormat;
         clearValuePtr = &clearValue;
     }
 

@@ -1,33 +1,14 @@
 #include "ParticleConfig.h"
 
-static float3 seed = float3(1, 1, 1);
-float rand()
+void initScene0(uint pid)
 {
-    seed = frac(seed * 1.6180339887 + 0.123456789);
-    float3 s = seed;
-    float n = dot(s, float3(12.9898, 78.233, 37.719));
-    return frac(sin(n) * 43758.5453);
-}
-
-RWStructuredBuffer<ParticleData> Particles : register(u0);
-const float Time : register(b0);
-
-float3 palette(in float t, in float3 a, in float3 b, in float3 c, in float3 d)
-{
-    return a + b * cos(6.283185 * (c * t + d));
-}
-
-[numthreads(32, 1, 1)]
-void main( uint3 DTid : SV_DispatchThreadID )
-{
- 
-    #define vec3 float3
-    float3 color = palette(float(DTid.x) / NUM_PARTICLES, vec3(0.5, 0.5, 0.5), vec3(0.5, 0.5, 0.5), vec3(1.0, 1.0, 1.0), vec3(0.0, 0.10, 0.20));
-    seed += DTid.x + Time;
-    ParticleData particle = Particles[DTid.x];
+#define vec3 float3
+    float3 color = palette(float(pid) / NUM_PARTICLES, vec3(0.5, 0.5, 0.5), vec3(0.5, 0.5, 0.5), vec3(1.0, 1.0, 1.0), vec3(0.0, 0.10, 0.20));
+#undef vec3
+    ParticleData particle = particles[pid];
     const float bigRadius = 999.0;
     const float offset = 25.0;
-    if (DTid.x == 0)
+    if (pid == 0)
     {
         particle.radius = bigRadius;
         particle.position = float3(0, particle.radius + offset, 0);
@@ -41,7 +22,7 @@ void main( uint3 DTid : SV_DispatchThreadID )
         particle.reflection = 0.0;
         particle.visible = 1;
     }
-    else if (DTid.x == 1)
+    else if (pid == 1)
     {
         particle.radius = bigRadius;
         particle.position = float3(0, -particle.radius - offset, 0);
@@ -55,7 +36,7 @@ void main( uint3 DTid : SV_DispatchThreadID )
         particle.reflection = 0.85;
         particle.visible = 1;
     }
-    else if (DTid.x == 2)
+    else if (pid == 2)
     {
         particle.radius = bigRadius;
         particle.position = float3(-particle.radius - offset, 0, 0);
@@ -69,7 +50,7 @@ void main( uint3 DTid : SV_DispatchThreadID )
         particle.reflection = 0.0;
         particle.visible = 1;
     }
-    else if (DTid.x == 3)
+    else if (pid == 3)
     {
         particle.radius = bigRadius;
         particle.position = float3(particle.radius + offset, 0, 0);
@@ -83,7 +64,7 @@ void main( uint3 DTid : SV_DispatchThreadID )
         particle.reflection = 0.0;
         particle.visible = 1;
     }
-    else if (DTid.x == 4)
+    else if (pid == 4)
     {
         particle.radius = bigRadius;
         particle.position = float3(0, 0, particle.radius + offset);
@@ -97,7 +78,7 @@ void main( uint3 DTid : SV_DispatchThreadID )
         particle.reflection = 0.0;
         particle.visible = 1;
     }
-    else if (DTid.x == 5)
+    else if (pid == 5)
     {
         particle.radius = bigRadius;
         particle.position = float3(0, 0, -particle.radius - offset);
@@ -125,8 +106,38 @@ void main( uint3 DTid : SV_DispatchThreadID )
         particle.reflection = 0.6 + rand() * 0.4;
         particle.visible = 1;
     }
-    particle.id = DTid.x + 1;
+    particle.id = pid + 1;
     particle.prevPosition = 0;
-    Particles[DTid.x] = particle;
-    
+    particles[pid] = particle;
+}
+
+void simScene0(uint pid, float time)
+{
+    ParticleData particle = particles[pid];
+    if (particle.dynamic)
+    {
+        particles[pid].acceleration = 0.00001 * (float3(0, 0, 0) - particle.position);
+            //particles[DTid.x].emissive = abs(sin((sin(DTid.x + Time * .5) * 0.5)));
+        particles[pid].velocity += particle.acceleration;
+        particles[pid].position += particle.velocity;
+    }
+
+    for (int i = 0; i < NUM_PARTICLES; ++i)
+    {
+        particle = particles[pid];
+        if (i != pid)
+        {
+            ParticleData particle2 = particles[i];
+
+            if (particle.dynamic && particle2.dynamic)
+            {
+                handleDynamicParticleResponse(particle, particle2);
+            }
+            else if (particle.dynamic && !particle2.dynamic)
+            {
+                handleStaticParticleResponse(particle, particle2);
+            }
+            particles[pid] = particle;
+        }
+    }
 }
