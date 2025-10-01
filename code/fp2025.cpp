@@ -19,7 +19,7 @@ inline UINT PIX_COLOR_INDEX(BYTE i) { return 0x00000000 | i; }
 
 int main()
 {
-	ni::init(1920, 1080, "FP2025", !NI_DEBUG, NI_DEBUG);
+	ni::init(RENDER_WIDTH, RENDER_HEIGHT, "FP2025", !NI_DEBUG, NI_DEBUG);
 
 #if NI_DEBUG
 	typedef void(WINAPI* BeginEventOnCommandList)(ID3D12GraphicsCommandList* commandList, UINT64 color, _In_ PCSTR formatString);
@@ -232,12 +232,12 @@ int main()
 			simulateParticlesDescriptorTable.allocCBVBuffer(simulationCB->buffer->resource, simulationCB->buffer->resource.apiResource->GetDesc().Width);
 			commandList->SetComputeRootDescriptorTable(0, simulateParticlesDescriptorTable.gpuBaseHandle);
 			commandList->Dispatch(NUM_PARTICLES / 32, 1, 1);
-			pixEndEventOnCommandList(commandList);
 
 			resourceBarrier.transition(particleBuffer->resource, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 			resourceBarrier.transition(outputTexture->resource, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 			resourceBarrier.transition(velocityBuffer->resource, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 			resourceBarrier.flush(commandList);
+			pixEndEventOnCommandList(commandList);
 
 			// Render Scene
 			pixBeginEventOnCommandList(commandList, PIX_COLOR_INDEX(1), "Render Base Scene");
@@ -293,11 +293,11 @@ int main()
 			temporalReprojectionDescriptorTable.allocCBVBuffer(sceneRenderCB->buffer->resource, sceneRenderCB->buffer->resource.apiResource->GetDesc().Width);
 			commandList->SetComputeRootDescriptorTable(0, temporalReprojectionDescriptorTable.gpuBaseHandle);
 			commandList->Dispatch((uint32_t)(sceneRenderCB->data.resolution.x / 32.0f), (uint32_t)(sceneRenderCB->data.resolution.y / 32.0f) + 1, 1);
-			pixEndEventOnCommandList(commandList);
 
 			resourceBarrier.transition(historyM1Buffer->resource, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 			resourceBarrier.transition(historyM2Buffer->resource, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 			resourceBarrier.flush(commandList);
+			pixEndEventOnCommandList(commandList);
 
 			// A-trous filter passes
 			pixBeginEventOnCommandList(commandList, PIX_COLOR_INDEX(3), "A-Trous Filter Passes");
@@ -369,8 +369,6 @@ int main()
 			depthOfFieldPassParams.add(ResourceDesc::srvTex2D(outputTexture->resource, DXGI_FORMAT_R8G8B8A8_UNORM, 0, 1, 0, 0.0f));
 			depthOfFieldPassParams.add(ResourceDesc::cbvBuffer(depthOfFieldCB->buffer->resource, depthOfFieldCB->buffer->resource.apiResource->GetDesc().Width));
 			depthOfFieldPass->draw(RENDER_WIDTH, RENDER_HEIGHT, commandList, rtvDescriptorTable.cpuBaseHandle, descriptorAllocator, depthOfFieldPassParams);
-			pixEndEventOnCommandList(commandList);
-
 			resourceBarrier.transition(positionBuffer->resource, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 			resourceBarrier.transition(normalBuffer->resource, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 			resourceBarrier.transition(prevPositionBuffer->resource, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
@@ -379,17 +377,17 @@ int main()
 			resourceBarrier.transition(finalBuffer->resource, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
 			resourceBarrier.transition(ni::getCurrentBackbuffer()->resource, D3D12_RESOURCE_STATE_RENDER_TARGET);
 			resourceBarrier.flush(commandList);
+			pixEndEventOnCommandList(commandList);
 
 			pixBeginEventOnCommandList(commandList, PIX_COLOR_INDEX(6), "Render to Backbuffer");
 			ni::Array<ResourceDesc> transferToBackbufferParams;
 			transferToBackbufferParams.add(ResourceDesc::srvTex2D(finalBuffer->resource, DXGI_FORMAT_R8G8B8A8_UNORM, 0, 1, 0, 0.0f));
 			transferToBackbufferParams.add(ResourceDesc::cbvBuffer(transferToBackBufferCB->buffer->resource, transferToBackBufferCB->buffer->resource.apiResource->GetDesc().Width));
 			transferToBackBufferPass->draw(ni::getViewWidthUint(), ni::getViewHeightUint(), commandList, rtvDescriptorTable.cpuHandle(1), descriptorAllocator, transferToBackbufferParams);
-			pixEndEventOnCommandList(commandList);
-
 			resourceBarrier.transition(finalBuffer->resource, D3D12_RESOURCE_STATE_RENDER_TARGET);
 			resourceBarrier.transition(ni::getCurrentBackbuffer()->resource, D3D12_RESOURCE_STATE_PRESENT);
 			resourceBarrier.flush(commandList);
+			pixEndEventOnCommandList(commandList);
 
 			ni::endFrame();
 
