@@ -1,18 +1,85 @@
 #include "ParticleConfig.h"
 
-StructuredBuffer<ParticleData> Particles : register(t0);
-RWTexture2D<float4> OutputTexture : register(u0);
-RWTexture2D<float4> VelocityBuffer : register(u1);
-RWTexture2D<float4> PositionBuffer : register(u2);
-RWTexture2D<float4> NormalBuffer : register(u3);
-RWTexture2D<float> DepthBuffer : register(u4);
+StructuredBuffer<ParticleData> particles : register(t0);
+RWTexture2D<float4> outputTexture : register(u0);
+RWTexture2D<float4> velocityBuffer : register(u1);
+RWTexture2D<float4> positionBuffer : register(u2);
+RWTexture2D<float4> normalBuffer : register(u3);
+RWTexture2D<float> depthBuffer : register(u4);
 
-ConstantBuffer<ConstantBufferData> ConstantData : register(b0);
+ConstantBuffer<ConstantBufferData> constantData : register(b0);
+ConstantBuffer<ParticleSceneData> particleScene : register(b1);
+ConstantBuffer<SimulationData> simData : register(b2);
 
 struct PathtraceOutput
 {
     float3 color;
 };
+
+float hash(float n)
+{
+    return frac(sin(n) * 753.5);
+}
+
+float4 noised(in float3 x)
+{
+    float3 p = floor(x);
+    float3 w = frac(x);
+    float3 u = w * w * (3 - 2 * w);
+    float3 du = 6 * w * (1 - w);
+
+    float n = p.x + p.y * 157 + 113 * p.z;
+
+    float a = hash(n);
+    float b = hash(n + 1);
+    float c = hash(n + 157);
+    float d = hash(n + 158);
+    float e = hash(n + 113);
+    float f = hash(n + 114);
+    float g = hash(n + 270);
+    float h = hash(n + 271);
+
+    float k0 = a;
+    float k1 = b - a;
+    float k2 = c - a;
+    float k3 = e - a;
+    float k4 = a - b - c + d;
+    float k5 = a - c - e + g;
+    float k6 = a - b - e + f;
+    float k7 = -a + b + c - d + e - f - g + h;
+
+    return float4(k0 + k1 * u.x + k2 * u.y + k3 * u.z + k4 * u.x * u.y + k5 * u.y * u.z + k6 * u.z * u.x + k7 * u.x * u.y * u.z,
+		du * (float3(k1, k2, k3) + u.yzx * float3(k4, k5, k6) + u.zxy * float3(k6, k4, k5) + k7 * u.yzx * u.zxy));
+}
+
+float4 fbmd(in float3 x)
+{
+    float a = 0,
+		b = 0.5,
+		f = 1;
+    float3 d = float3(0, 0, 0);
+	[unroll]
+    for (int i = 0; i < 3; i++)
+    {
+        float4 n = noised(f * x);
+        a += b * n.x; // accumulate values      
+        d += b * n.yzw * f; // accumulate derivatives
+        b *= 0.5; // amplitude decrease
+        f *= 1.8; // frequency increase
+    }
+
+    return float4(a, d);
+}
+
+#include "scenes/scene0/Material0.hlsli"
+
+Material getMaterial(in ParticleData particle, uint pid, in float3 position, in float3 normal, uint scene, float time)
+{
+    Material material = (Material)0;
+    if (scene == 0) material = getMaterialScene0(particle, pid, position, normal, time);
+    return material;
+}
+
 
 void CreateRayFromUV(float2 uv, float4x4 invViewProj, float3 cameraPosition, out float3 rayOrigin, out float3 rayDirection)
 {
@@ -61,9 +128,9 @@ bool Trace(float3 rayOrigin, float3 rayDirection, out ParticleData OutParticle, 
 {
     bool hit = false;
     float lastDepth = 3.402823466e+38F;
-    for (int i = 0; i < NUM_PARTICLES; i++)
+    for (int i = 0; i < particleScene.numParticles; i++)
     {
-        if (!Particles[i].visible)
+        if (!particles[i].visible)
         {
             continue;
         }
@@ -71,11 +138,11 @@ bool Trace(float3 rayOrigin, float3 rayDirection, out ParticleData OutParticle, 
         float3 hitPosition;
         float3 hitNormal;
         float dist = 0.0;
-        if (IntersectsParticle(rayOrigin, rayDirection, Particles[i], hitPosition, hitNormal, dist))
+        if (IntersectsParticle(rayOrigin, rayDirection, particles[i], hitPosition, hitNormal, dist))
         {
             if (dist < lastDepth)
             {
-                OutParticle = Particles[i];
+                OutParticle = particles[i];
                 OutPosition = hitPosition;
                 OutNormal = hitNormal;
                 lastDepth = dist;
@@ -147,13 +214,14 @@ PathtraceOutput Pathtrace(float3 rayOrigin, float3 rayDirection)
     {
         if (Trace(rayOrigin, rayDirection, particle, hitPosition, hitNormal))
         {
-            rayDirection = lerp(GetCosineWeightedSample(hitNormal), normalize(reflect(rayDirection, hitNormal)), particle.reflection);
+            Material hitMaterial = getMaterial(particle, particle.id - 1, hitPosition, hitNormal, simData.scene, simData.time);
+            rayDirection = lerp(GetCosineWeightedSample(hitNormal), normalize(reflect(rayDirection, hitNormal)), hitMaterial.reflection);
             rayOrigin = hitPosition + rayDirection * 1e-3;
-            luminance *= particle.albedo;
+            luminance *= hitMaterial.albedo;
             
-            if (particle.emissive > 0)
+            if (hitMaterial.emissive > 0)
             {
-                output.color += luminance * particle.albedo * particle.emissive;
+                output.color += luminance * hitMaterial.albedo * hitMaterial.emissive;
             }
         }
         else
@@ -170,7 +238,7 @@ bool CalcPositionNormalAndVelocity(float2 uv, out float3 outPosition, out float3
 {
     float3 rayOrigin;
     float3 rayDirection;
-    CreateRayFromUV(uv, ConstantData.invViewProjMtx, ConstantData.cameraPos, rayOrigin, rayDirection);
+    CreateRayFromUV(uv, constantData.invViewProjMtx, constantData.cameraPos, rayOrigin, rayDirection);
     
     ParticleData particle;
     particle.id = 0;
@@ -185,7 +253,7 @@ bool CalcPositionNormalAndVelocity(float2 uv, out float3 outPosition, out float3
         
         float3 prevRayOrigin;
         float3 prevRayDirection;
-        CreateRayFromUV(uv, ConstantData.prevInvViewProjMtx, ConstantData.prevCameraPos, prevRayOrigin, prevRayDirection);
+        CreateRayFromUV(uv, constantData.prevInvViewProjMtx, constantData.prevCameraPos, prevRayOrigin, prevRayDirection);
         
         ParticleData prevParticle;
         float3 prevHitNormal = -prevRayDirection;
@@ -194,8 +262,8 @@ bool CalcPositionNormalAndVelocity(float2 uv, out float3 outPosition, out float3
         
     }
     
-    float4 prevPos = mul(ConstantData.prevViewProjMtx, float4(hitPosition, 1));
-    float4 currPos = mul(ConstantData.viewProjMtx, float4(hitPosition, 1));
+    float4 prevPos = mul(constantData.prevViewProjMtx, float4(hitPosition, 1));
+    float4 currPos = mul(constantData.viewProjMtx, float4(hitPosition, 1));
         
     float2 prevUv = (prevPos.xy / prevPos.w) * 0.5 + 0.5;
     float2 currUv = (currPos.xy / currPos.w) * 0.5 + 0.5;
@@ -207,7 +275,7 @@ bool CalcPositionNormalAndVelocity(float2 uv, out float3 outPosition, out float3
 [numthreads(32, 32, 1)]
 void main(uint3 DTid : SV_DispatchThreadID)
 {
-    float2 uv = ((float2(DTid.xy)) / (ConstantData.resolution).xy);
+    float2 uv = ((float2(DTid.xy)) / (constantData.resolution).xy);
     float3 rayOrigin = 0;
     float3 rayDirection = 0;
     float2 hitVelocity = 0;
@@ -220,19 +288,19 @@ void main(uint3 DTid : SV_DispatchThreadID)
     
     bool result = CalcPositionNormalAndVelocity(uv, hitPosition, hitNormal, hitVelocity, hitParticle);
     {
-        float4 clipSpacePos = mul(ConstantData.viewProjMtx, float4(hitPosition, 1.0));
+        float4 clipSpacePos = mul(constantData.viewProjMtx, float4(hitPosition, 1.0));
         float3 ndcHit = clipSpacePos.xyz / clipSpacePos.w;
         depth = result ? ndcHit.z : 1;
         
-        float4 prevPos = mul(ConstantData.viewProjMtx, float4(hitParticle.prevPosition, 1));
-        float4 currPos = mul(ConstantData.viewProjMtx, float4(hitParticle.position, 1));
+        float4 prevPos = mul(constantData.viewProjMtx, float4(hitParticle.prevPosition, 1));
+        float4 currPos = mul(constantData.viewProjMtx, float4(hitParticle.position, 1));
         
         float2 prevUv = (prevPos.xy / prevPos.w) * 0.5 + 0.5;
         float2 currUv = (currPos.xy / currPos.w) * 0.5 + 0.5;
         hitVelocity += (prevUv - currUv);
     }
     
-    float offsetTime = ConstantData.time;
+    float offsetTime = constantData.time;
 #if 0
         if ((DTid.x % 9) == 0 )
         {
@@ -240,22 +308,22 @@ void main(uint3 DTid : SV_DispatchThreadID)
         }
 #endif
     seed2 = uv + cos(offsetTime);
-    const int samples = ConstantData.sampleCount;
-    float2 pxSize = (1 / ConstantData.resolution.xy) * 0.5;
+    const int samples = constantData.sampleCount;
+    float2 pxSize = (1 / constantData.resolution.xy) * 0.5;
     for (int i = 0; i < samples; i++)
     {
         float offset = toRad(offsetTime + (float(i) / samples * 360.0));
-        float2 uvOffset = float2(cos(offset), sin(offset)) * pxSize;
+        float2 uvOffset = /*float2(cos(offset), sin(offset))*/rand2n() * pxSize;
 
-        CreateRayFromUV(uv + uvOffset, ConstantData.invViewProjMtx, ConstantData.cameraPos, rayOrigin, rayDirection);
+        CreateRayFromUV(uv + uvOffset, constantData.invViewProjMtx, constantData.cameraPos, rayOrigin, rayDirection);
         PathtraceOutput ptResult = Pathtrace(rayOrigin, rayDirection);
         output.color += ptResult.color;
     }
     output.color /= float(samples);
     
-    OutputTexture[DTid.xy] = float4(output.color, 1);
-    VelocityBuffer[DTid.xy] = float4(hitVelocity, 0, 1);
-    PositionBuffer[DTid.xy] = float4(hitPosition, float(hitParticle.id));
-    NormalBuffer[DTid.xy] = float4(hitNormal, 1);
-    DepthBuffer[DTid.xy] = depth;
+    outputTexture[DTid.xy] = float4(output.color, 1);
+    velocityBuffer[DTid.xy] = float4(hitVelocity, 0, 1);
+    positionBuffer[DTid.xy] = float4(hitPosition, float(hitParticle.id));
+    normalBuffer[DTid.xy] = float4(hitNormal, 1);
+    depthBuffer[DTid.xy] = depth;
 }

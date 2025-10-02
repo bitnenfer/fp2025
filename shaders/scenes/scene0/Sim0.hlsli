@@ -1,10 +1,7 @@
-#include "ParticleConfig.h"
+#include "../../ParticleConfig.h"
 
 void initScene0(uint pid)
 {
-#define vec3 float3
-    float3 color = palette(float(pid) / NUM_PARTICLES, vec3(0.5, 0.5, 0.5), vec3(0.5, 0.5, 0.5), vec3(1.0, 1.0, 1.0), vec3(0.0, 0.10, 0.20));
-#undef vec3
     ParticleData particle = particles[pid];
     const float bigRadius = 999.0;
     const float offset = 25.0;
@@ -102,11 +99,10 @@ void initScene0(uint pid)
         particle.friction = 0.5;
         particle.dynamic = true;
         particle.emissive = rand() > 0.2 ? 1.0 : 0;
-        particle.albedo = color;
-        particle.reflection = 0.6 + rand() * 0.4;
+        particle.albedo = getRandomColor(float(pid) / particleScene.numParticles);
+        particle.reflection = 1;
         particle.visible = 1;
     }
-    particle.id = pid + 1;
     particle.prevPosition = 0;
     particles[pid] = particle;
 }
@@ -117,12 +113,13 @@ void simScene0(uint pid, float time)
     if (particle.dynamic)
     {
         particles[pid].acceleration = 0.00001 * (float3(0, 0, 0) - particle.position);
-            //particles[DTid.x].emissive = abs(sin((sin(DTid.x + Time * .5) * 0.5)));
+        //particles[pid].emissive = abs(sin((sin(pid + time * .5) * 0.5))) * 1.0;
         particles[pid].velocity += particle.acceleration;
         particles[pid].position += particle.velocity;
+        particles[pid].albedo = getRandomColor(fmod(float(pid) / particleScene.numParticles + time, 1.0));
     }
 
-    for (int i = 0; i < NUM_PARTICLES; ++i)
+    for (int i = 0; i < particleScene.numParticles; ++i)
     {
         particle = particles[pid];
         if (i != pid)

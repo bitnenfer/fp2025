@@ -47,6 +47,7 @@
     <FxCompile Include="shaders\TransferToBackbufferPS.hlsl" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="shaders\Scene0.hlsli" />
+    <None Include="shaders\scenes\scene0\Sim0.hlsli" />
+    <None Include="shaders\scenes\scene0\Material0.hlsli" />
   </ItemGroup>
 </Project>

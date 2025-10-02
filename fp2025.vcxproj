@@ -172,7 +172,8 @@
     </FxCompile>
   </ItemGroup>
   <ItemGroup>
-    <None Include="shaders\Scene0.hlsli" />
+    <None Include="shaders\scenes\scene0\Material0.hlsli" />
+    <None Include="shaders\scenes\scene0\Sim0.hlsli" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

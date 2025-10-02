@@ -1,7 +1,7 @@
 #ifndef _PARTICLE_CONFIG_H_
 #define _PARTICLE_CONFIG_H_
 
-#define NUM_PARTICLES (32*1)
+//#define NUM_PARTICLES (32*1)
 
 #ifdef IS_CPU
 typedef ni::Float3 float3;
@@ -22,9 +22,21 @@ struct ParticleData
 	float friction;
 	float reflection;
 	float emissive;
-	uint id;
+	uint id; // don't use this. It's for the temporal reprojection rejection
 	uint dynamic;
 	uint visible;
+};
+
+struct Material
+{
+	float3 albedo;
+	float emissive;
+	float reflection;
+};
+
+struct ParticleSceneData
+{
+	uint numParticles;
 };
 
 struct ConstantBufferData
@@ -58,6 +70,13 @@ struct SimulationData
 {
 	uint scene;
 	uint frame;// 0 = Don't run simulation (animation) and init particles for specific scene. >1 Run simulation for specific scene.
+	float time;
+};
+
+struct FinalPassData
+{
+	float2 resolution;
+	float2 nativeResolution;
 	float time;
 };
 

@@ -2,14 +2,22 @@
 
 RWStructuredBuffer<ParticleData> particles : register(u0);
 ConstantBuffer<SimulationData> simData : register(b0);
+ConstantBuffer<ParticleSceneData> particleScene : register(b1);
 
 void handleStaticParticleResponse(inout ParticleData dynamicParticle, ParticleData staticParticle);
 void handleDynamicParticleResponse(inout ParticleData dynamicparticle1, inout ParticleData dynamicparticle2);
 static float3 seed = float3(1, 1, 1);
 float rand();
 float3 palette(in float t, in float3 a, in float3 b, in float3 c, in float3 d);
+float3 getRandomColor(float t)
+{
+#define vec3 float3
+    float3 color = palette(t, vec3(0.5, 0.5, 0.5), vec3(0.5, 0.5, 0.5), vec3(1.0, 1.0, 1.0), vec3(0.0, 0.10, 0.20));
+#undef vec3
+    return color;
+}
 
-#include "Scene0.hlsli"
+#include "scenes/scene0/Sim0.hlsli"
 
 void initScene(uint pid, uint scene)
 {
@@ -25,6 +33,9 @@ void simulateScene(uint pid, uint scene, float time)
 void main( uint3 DTid : SV_DispatchThreadID )
 {
     seed += DTid.x + simData.time;
+    // Always run this...
+    particles[DTid.x].id = DTid.x + 1;
+    particles[DTid.x].prevPosition = particles[DTid.x].position;
     
     if (simData.frame > 0)
     {
@@ -34,9 +45,6 @@ void main( uint3 DTid : SV_DispatchThreadID )
     {
         initScene(DTid.x, simData.scene);
     }
-    
-    // Always run this...
-    particles[DTid.x].prevPosition = particles[DTid.x].position;
 }
 
 float3 palette(in float t, in float3 a, in float3 b, in float3 c, in float3 d)

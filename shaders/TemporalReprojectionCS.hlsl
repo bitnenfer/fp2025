@@ -1,22 +1,22 @@
 #include "ParticleConfig.h"
 
 Texture2D<float4> CurrentFrame : register(t0);
-Texture2D<float4> VelocityBuffer : register(t1);
+Texture2D<float4> velocityBuffer : register(t1);
 Texture2D<float4> HistoryBuffer : register(t2);
-Texture2D<float4> PositionBuffer : register(t3);
-Texture2D<float4> NormalBuffer : register(t4);
+Texture2D<float4> positionBuffer : register(t3);
+Texture2D<float4> normalBuffer : register(t4);
 Texture2D<float4> PrevPositionBuffer : register(t5);
 Texture2D<float4> PrevNormalBuffer : register(t6);
 Texture2D<float> HistoryM1Prev : register(t7);
 Texture2D<float> HistoryM2Prev : register(t8);
-Texture2D<float> DepthBuffer : register(t9);
+Texture2D<float> depthBuffer : register(t9);
 Texture2D<float> PrevDepthBuffer : register(t10);
 
 RWTexture2D<float4> ResultTexture : register(u0);
 RWTexture2D<float> HistoryM1Out : register(u1);
 RWTexture2D<float> HistoryM2Out : register(u2);
 
-ConstantBuffer<ConstantBufferData> ConstantData : register(b0);
+ConstantBuffer<ConstantBufferData> constantData : register(b0);
 
 SamplerState linearClamp : register(s0);
 SamplerState pointClamp : register(s1);
@@ -30,19 +30,19 @@ float Luma(float3 c)
 void main( uint3 DTid : SV_DispatchThreadID )
 {
     uint2 px = DTid.xy;
-    if (px.x >= uint(ConstantData.resolution.x) || px.y >= uint(ConstantData.resolution.y))
+    if (px.x >= uint(constantData.resolution.x) || px.y >= uint(constantData.resolution.y))
         return;
     
-    float4 positionAndId = PositionBuffer[px];
+    float4 positionAndId = positionBuffer[px];
     float4 currentFrameAndDepth = CurrentFrame[px];
     
-    float2 uv = (float2(px) + 0.5) / ConstantData.resolution.xy;
+    float2 uv = (float2(px) + 0.5) / constantData.resolution.xy;
     float3 ccurr = currentFrameAndDepth.rgb;
-    float3 ncurr = normalize(NormalBuffer[px].rgb);
+    float3 ncurr = normalize(normalBuffer[px].rgb);
     float3 pcurr = positionAndId.xyz;
     uint idcurr = uint(positionAndId.w);
-    float zcurr = DepthBuffer[px].r;
-    float2 vel = VelocityBuffer[px].xy;
+    float zcurr = depthBuffer[px].r;
+    float2 vel = velocityBuffer[px].xy;
     float2 uvPrev = uv + vel;
     
     bool valid = all(uvPrev > 0.0) && all(uvPrev <= 1.0) && idcurr > 0;
@@ -79,7 +79,7 @@ void main( uint3 DTid : SV_DispatchThreadID )
         [unroll]
         for (int ox = -1; ox <= 1; ++ox)
         {
-            int2 q = clamp(int2(px) + int2(ox, oy), int2(0, 0), int2(ConstantData.resolution.xy) - 1);
+            int2 q = clamp(int2(px) + int2(ox, oy), int2(0, 0), int2(constantData.resolution.xy) - 1);
             float3 Cn = CurrentFrame.Load(int3(q, 0)).rgb;
             float y = Luma(Cn);
             Ymin = min(Ymin, y);
@@ -117,7 +117,7 @@ void main( uint3 DTid : SV_DispatchThreadID )
     }
     else
     {
-        const float blend = 0.2;
+        const float blend = 0.15;
         Cout = lerp(ccurr, Chist, 1 - blend);
         M1 = lerp(Ycurr, m1prev, 1 - blend);
         M2 = lerp(Ycurr * Ycurr, m2prev, 1 - blend);

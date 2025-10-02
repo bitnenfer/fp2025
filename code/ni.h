@@ -805,10 +805,11 @@ namespace ni {
 		uint64_t frameCount;
 		float mouseX;
 		float mouseY;
+		float mouseWheelY;
 		bool shouldQuit;
 	};
 
-	void init(uint32_t width, uint32_t height, const char* title, bool fullscreen, bool enablePIX = false /* only works when compiling debug build */);
+	void init(int32_t x, int32_t y, uint32_t width, uint32_t height, const char* title, bool fullscreen, bool enablePIX = false /* only works when compiling debug build */);
 	void setFrameUserData(uint32_t frame, void* data);
 	void waitForCurrentFrame();
 	void waitForAllFrames();
@@ -853,8 +854,8 @@ namespace ni {
 	double getSeconds();
 	size_t getDXGIFormatBits(DXGI_FORMAT format);
 	size_t getDXGIFormatBytes(DXGI_FORMAT format);
-	Texture* createTexture(const wchar_t* name, uint32_t width, uint32_t height, uint32_t depth, const void* pixels, D3D12_RESOURCE_STATES initialState, DXGI_FORMAT dxgiFormat = DXGI_FORMAT_R8G8B8A8_UNORM, D3D12_RESOURCE_FLAGS flags = D3D12_RESOURCE_FLAG_NONE);
-	Texture* createTexture(uint32_t width, uint32_t height, uint32_t depth, const void* pixels, D3D12_RESOURCE_STATES initialState, DXGI_FORMAT dxgiFormat = DXGI_FORMAT_R8G8B8A8_UNORM, D3D12_RESOURCE_FLAGS flags = D3D12_RESOURCE_FLAG_NONE);
+	Texture* createTexture(const wchar_t* name, uint32_t width, uint32_t height, uint32_t depth, const void* pixels, D3D12_RESOURCE_STATES initialState, DXGI_FORMAT dxgiFormat, D3D12_RESOURCE_FLAGS flags = D3D12_RESOURCE_FLAG_NONE);
+	Texture* createTexture(uint32_t width, uint32_t height, uint32_t depth, const void* pixels, D3D12_RESOURCE_STATES initialState, DXGI_FORMAT dxgiFormat, D3D12_RESOURCE_FLAGS flags = D3D12_RESOURCE_FLAG_NONE);
 	void destroyTexture(Texture*& image);
 	uint64_t murmurHash(const void* key, uint64_t keyLength, uint64_t seed);
 	inline void* offsetPtr(void* Ptr, intptr_t Offset) { return (void*)((intptr_t)Ptr + Offset); }

@@ -317,7 +317,7 @@ void ni::destroyBuffer(Buffer*& buffer) {
     buffer = nullptr;
 }
 
-void ni::init(uint32_t width, uint32_t height, const char* title, bool fullscreen, bool enablePIX) {
+void ni::init(int32_t x, int32_t y, uint32_t width, uint32_t height, const char* title, bool fullscreen, bool enablePIX) {
     memset(&renderer, 0, sizeof(renderer));
 	renderer.windowWidth = width;
 	renderer.windowHeight = height;
@@ -329,7 +329,7 @@ void ni::init(uint32_t width, uint32_t height, const char* title, bool fullscree
 
     if (fullscreen) {
         renderer.windowWidth = GetSystemMetrics(SM_CXSCREEN);
-        renderer.windowHeight = GetSystemMetrics(SM_CXSCREEN);
+        renderer.windowHeight = GetSystemMetrics(SM_CYSCREEN);
     }
 
     /* Create Window */
@@ -380,11 +380,10 @@ void ni::init(uint32_t width, uint32_t height, const char* title, bool fullscree
     AdjustWindowRect(&windowRect, windowStyle, false);
     int32_t adjustedWidth = windowRect.right - windowRect.left;
     int32_t adjustedHeight = windowRect.bottom - windowRect.top;
-    int32_t offset = fullscreen ? 0 : 100;
 
     renderer.windowHandle = CreateWindowExA(
-        WS_EX_LEFT, "WindowClass", title, windowStyle, offset,
-        offset, adjustedWidth, adjustedHeight, nullptr, nullptr,
+        WS_EX_LEFT, "WindowClass", title, windowStyle, x,
+        y, adjustedWidth, adjustedHeight, nullptr, nullptr,
         GetModuleHandle(nullptr), nullptr);
 
     UINT factoryFlag = 0;
@@ -542,13 +541,10 @@ void ni::pollEvents() {
     MSG message;
     memset(mouseBtnsClick, 0, sizeof(mouseBtnsClick));
     lastChar = 0;
+    renderer.mouseWheelY = 0.0f;
     while (PeekMessageA(&message, nullptr, 0, 0, PM_REMOVE)) {
         TranslateMessage(&message);
         switch (message.message) {
-        case WM_MOUSEWHEEL:
-            break;
-        case WM_MOUSEHWHEEL:
-            break;
 
         case WM_KEYDOWN:
             if (message.wParam == 27) {
@@ -595,6 +591,9 @@ void ni::pollEvents() {
             break;
         case WM_QUIT:
             renderer.shouldQuit = true;
+            return;
+        case WM_MOUSEWHEEL:
+            renderer.mouseWheelY = (float)GET_WHEEL_DELTA_WPARAM(message.wParam) / (float)WHEEL_DELTA;
             return;
         default:
             DispatchMessageA(&message);
@@ -939,7 +938,7 @@ float ni::mouseWheelX() {
 }
 
 float ni::mouseWheelY() {
-    return 0.0f;
+    return renderer.mouseWheelY;
 }
 
 bool ni::mouseDown(MouseButton button) {
