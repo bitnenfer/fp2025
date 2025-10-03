@@ -42,7 +42,7 @@ int main()
 	ShowCursor(0);
 #endif
 	// Audio Renderer
-	//AudioRenderer* audioRenderer = new AudioRenderer(3*60);
+	AudioRenderer* audioRenderer = new AudioRenderer(3*60);
 
 	// Initialize particle simulation
 	ni::FlyCamera camera(ni::Float3(0, -0, -80));
@@ -171,11 +171,10 @@ int main()
 	{
 		ni::pollEvents();
 
-
-		//NI_LOG("wheel %f", ni::mouseWheelY());
-
 		if (ni::FrameData* frame = ni::beginFrame())
 		{
+			audioRenderer->processCPU();
+
 			uint32_t pixColorIndex = 0;
 			ID3D12GraphicsCommandList* commandList = frame->commandList;
 			ni::DescriptorTable rtvDescriptorTable = rtvDescriptorAllocator->allocateDescriptorTable(2);
@@ -189,18 +188,18 @@ int main()
 			commandList->ClearRenderTargetView(rtvDescriptorTable.cpuHandle(1), clearColor, 0, nullptr);
 			commandList->SetDescriptorHeaps(1, &descriptorAllocator->descriptorHeap);
 
-			/*if (!audioRenderer->hasFinishedRendering())
+			if (!audioRenderer->hasFinishedRendering())
 			{
 				pixBeginEventOnCommandList(commandList, PIX_COLOR_INDEX(pixColorIndex++), "Process Audio");
 				audioRenderer->renderAudioBufferGPU(commandList, descriptorAllocator, resourceBarrier);
 				pixEndEventOnCommandList(commandList);
 			}
-			else*/
+			else
 			{
-				/*if (!audioRenderer->isPlaying())
+				if (!audioRenderer->isPlaying())
 				{
-					audioRenderer->play();
-				}*/
+					//audioRenderer->play();
+				}
 
 				if (ni::keyDown(ni::SHIFT))
 				{
@@ -442,7 +441,6 @@ int main()
 			resourceBarrier.flush(commandList);
 
 			ni::endFrame();
-			//audioRenderer->processCPU();
 
 			rtvDescriptorAllocator->reset();
 			descriptorAllocator->reset();

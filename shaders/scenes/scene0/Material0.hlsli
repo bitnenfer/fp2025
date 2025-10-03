@@ -18,12 +18,15 @@ Material getMaterialScene0(in ParticleData particle, uint pid, in float3 positio
         float s = pow(abs(length(fb)), 0.8);
         material.reflection = s;
     }
-    else if (pid == 4)
+    else if (pid > 6)
     {
-        //float4 fb = fbmd((position + float3(0, 0, time * 10.0)) * 0.08);
-        //float s = pow(abs(length(fb)), 0.8);
-        //material.albedo = lerp(float3(1, 0, 0), float3(1, 1, 0), s);
-        //material.emissive = s * 1.0;
+        ////float4 fb = fbmd((position + float3(0, 0, time * 10.0)) * 0.08);
+        ////float s = pow(abs(length(fb)), 0.8);
+        ////material.albedo = lerp(float3(1, 0, 0), float3(1, 1, 0), s);
+        ////material.emissive = s * 1.0;
+        float4 fb = fbmd((particle.position - position) * 2);
+        float s = pow(abs(length(fb)), 0.8);
+        material.reflection = s;
     }
     return material;
 }
