@@ -43,8 +43,8 @@ void initScene0(uint pid)
         particle.friction = 0.0;
         particle.dynamic = false;
         particle.emissive = 0.0;
-        particle.albedo = float3(1, 0, 0);
-        particle.reflection = 0.0;
+        particle.albedo = 0.1;
+        particle.reflection = 1.0;
         particle.visible = 1;
     }
     else if (pid == 3)
@@ -57,7 +57,7 @@ void initScene0(uint pid)
         particle.friction = 0.0;
         particle.dynamic = false;
         particle.emissive = 0.0;
-        particle.albedo = float3(0, 1, 0);
+        particle.albedo = .05;
         particle.reflection = 0.0;
         particle.visible = 1;
     }
@@ -71,7 +71,7 @@ void initScene0(uint pid)
         particle.friction = 0.0;
         particle.dynamic = false;
         particle.emissive = 0.0;
-        particle.albedo = float3(0, 0, 1);
+        particle.albedo = 1; //float3(0, 0, 1);
         particle.reflection = 0.0;
         particle.visible = 1;
     }
@@ -89,6 +89,21 @@ void initScene0(uint pid)
         particle.reflection = 0.0;
         particle.visible = 0;
     }
+    else if (pid == 6)
+    {
+        // camera particle
+        particle.radius = 4;
+        particle.position = simData.cameraPos;
+        particle.elasticity = 0;
+        particle.velocity = 0;
+        particle.acceleration = 0;
+        particle.friction = 0.0;
+        particle.dynamic = false;
+        particle.emissive = 0.0;
+        particle.albedo = 0; //float3(0, 0, 1);
+        particle.reflection = 0.0;
+        particle.visible = 0;
+    }
     else
     {
         particle.radius = 0.5 + rand() * 4.0;
@@ -99,7 +114,7 @@ void initScene0(uint pid)
         particle.friction = 0.5;
         particle.dynamic = true;
         particle.emissive = rand() > 0.2 ? 1.0 : 0;
-        particle.albedo = getRandomColor(float(pid) / particleScene.numParticles);
+        particle.albedo = getRandomColor(float(pid) / particleScene.numParticles) * float3(0.01, 0.03, 1.0);
         particle.reflection = 1;
         particle.visible = 1;
     }
@@ -116,7 +131,12 @@ void simScene0(uint pid, float time)
         //particles[pid].emissive = abs(sin((sin(pid + time * .5) * 0.5))) * 1.0;
         particles[pid].velocity += particle.acceleration;
         particles[pid].position += particle.velocity;
-        particles[pid].albedo = getRandomColor(fmod(float(pid) / particleScene.numParticles + time, 1.0));
+        //particles[pid].albedo = getRandomColor(fmod(float(pid) / particleScene.numParticles + time, 1.0));
+    }
+    
+    if (pid == 6)
+    {
+        particles[pid].position = simData.cameraPos;
     }
 
     for (int i = 0; i < particleScene.numParticles; ++i)

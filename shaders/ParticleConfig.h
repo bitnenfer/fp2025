@@ -68,9 +68,16 @@ struct DepthOfFieldData
 
 struct SimulationData
 {
+	float3 cameraPos;
 	uint scene;
 	uint frame;// 0 = Don't run simulation (animation) and init particles for specific scene. >1 Run simulation for specific scene.
 	float time;
+};
+
+struct AudioData
+{
+	float duration;
+	uint sampleRate;
 };
 
 struct FinalPassData

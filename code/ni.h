@@ -150,7 +150,8 @@ namespace ni {
 		CONSTANT_BUFFER,
 		UNORDERED_BUFFER,
 		UPLOAD_BUFFER,
-		SHADER_RESOURCE_BUFFER
+		SHADER_RESOURCE_BUFFER,
+		READBACK_BUFFER
 	};
 
 	struct FileReader {
@@ -165,6 +166,12 @@ namespace ni {
 
 	template<typename T, typename TSize = uint64_t>
 	struct Array {
+		Array(TSize fillCount, const T& element) : data(nullptr), num(0), capacity(0)
+		{
+			resize(fillCount);
+			fill(fillCount, element);
+		}
+
 		Array() : data(nullptr), num(0), capacity(0) {}
 
 		~Array() {
@@ -222,6 +229,14 @@ namespace ni {
 			data = nullptr;
 		}
 
+		void fill(TSize count, const T& element)
+		{
+			for (TSize index = 0; index < count; ++index)
+			{
+				add(element);
+			}
+		}
+
 		template<typename... TArgs>
 		T& emplace(TArgs... args) {
 			checkResize();
@@ -234,13 +249,20 @@ namespace ni {
 			new (&data[num++]) T(element);
 		}
 
-		//void remove(TSize index) {
-		//	NI_ASSERT(index < num, "Index out of bounds");
-		//	for (TSize start = index; start < num - 1; ++start) {
-		//		data[start] = data[start + 1];
-		//	}
-		//	num--;
-		//}
+		void add(T&& element) {
+			checkResize();
+			new (&data[num++]) T(std::move(element));
+		}
+
+		void remove(TSize index)
+		{
+			if (index > 0 && index < num)
+			{
+				destroyRange(index, index + 1);
+				move(&data[index], &data[index + 1], num - index);
+				num--;
+			}
+		}
 
 		void resize(TSize newCapacity) {
 			NI_ASSERT(newCapacity > capacity, "New capacity must be larger than capacity. To clear the use the clear function.");
@@ -320,6 +342,11 @@ namespace ni {
 	struct FixedArray {
 
 		FixedArray() : num(0) {}
+
+		~FixedArray()
+		{
+
+		}
 		
 		void reset() {
 			num = 0;
@@ -327,13 +354,13 @@ namespace ni {
 
 		template<typename... TArgs>
 		T& emplace(TArgs... args) {
-			NI_ASSERT(num < MAX_COUNT - 1, "Exceeded the limit of the fixed array %u", MAX_COUNT);
+			NI_ASSERT(num < MAX_COUNT, "Exceeded the limit of the fixed array %u", MAX_COUNT);
 			T* ptr = new (&data[num++]) T(std::forward(args)...);
 			return *ptr;
 		}
 
 		void add(const T& element) {
-			NI_ASSERT(num < MAX_COUNT - 1, "Exceeded the limit of the fixed array %u", MAX_COUNT);
+			NI_ASSERT(num < MAX_COUNT, "Exceeded the limit of the fixed array %u", MAX_COUNT);
 			data[num++] = element;
 		}
 		void remove(TSize index) {
@@ -530,6 +557,7 @@ namespace ni {
 
 		void reset();
 		DescriptorTable allocateDescriptorTable(uint32_t descriptorNum);
+		uint32_t remaining() const { return descriptorCapacity - descriptorAllocated; }
 
 		ID3D12DescriptorHeap* descriptorHeap;
 		D3D12_GPU_DESCRIPTOR_HANDLE gpuBaseHandle;
@@ -869,6 +897,7 @@ namespace ni {
 	PipelineState* buildGraphicsPipelineState(GraphicsPipelineDesc& desc);
 	void destroyPipelineState(PipelineState*& pipelineState);
 	void destroyBuffer(Buffer*& buffer);
+	ID3D12CommandQueue* getCommandQueue();
 
 	template<typename TFunc, typename TCheck>
 	void forEachKeyCode(TFunc func, TCheck check) {

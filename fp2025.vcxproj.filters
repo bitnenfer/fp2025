@@ -35,6 +35,9 @@
     <ClInclude Include="code\render.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="code\audio.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="shaders\SimulateCS.hlsl" />
@@ -45,6 +48,7 @@
     <FxCompile Include="shaders\ATrousFilterCS.hlsl" />
     <FxCompile Include="shaders\DepthOfFieldPS.hlsl" />
     <FxCompile Include="shaders\TransferToBackbufferPS.hlsl" />
+    <FxCompile Include="shaders\AudioProcessCS.hlsl" />
   </ItemGroup>
   <ItemGroup>
     <None Include="shaders\scenes\scene0\Sim0.hlsli" />

@@ -175,8 +175,37 @@ void ni::DescriptorAllocator::reset() {
 }
 
 ni::DescriptorTable ni::DescriptorAllocator::allocateDescriptorTable(uint32_t descriptorNum) {
-    NI_ASSERT(descriptorAllocated + descriptorNum <= descriptorCapacity, "Can't allocate %u descriptors", descriptorNum);
-    DescriptorTable table = { { gpuBaseHandle.ptr + descriptorAllocated * descriptorHandleSize }, { cpuBaseHandle.ptr + descriptorAllocated * descriptorHandleSize }, descriptorHandleSize, 0, descriptorNum };
+    //NI_ASSERT(descriptorAllocated + descriptorNum <= descriptorCapacity, "Can't allocate %u descriptors", descriptorNum);
+    //DescriptorTable table = { { gpuBaseHandle.ptr + descriptorAllocated * descriptorHandleSize }, { cpuBaseHandle.ptr + descriptorAllocated * descriptorHandleSize }, descriptorHandleSize, 0, descriptorNum };
+    //descriptorAllocated += descriptorNum;
+    //return table;
+
+    NI_ASSERT(descriptorNum > 0, "DescriptorAllocator: cannot allocate 0 descriptors");
+    NI_ASSERT(descriptorAllocated <= descriptorCapacity, "DescriptorAllocator: internal overflow");
+    NI_ASSERT(descriptorCapacity - descriptorAllocated >= descriptorNum,
+        "DescriptorAllocator: requested %u descriptors, only %u remaining",
+        descriptorNum, remaining());
+
+    // Do math in pointer-sized type to avoid overflow
+    const SIZE_T byteOffset = SIZE_T(descriptorAllocated) * SIZE_T(descriptorHandleSize);
+
+    D3D12_GPU_DESCRIPTOR_HANDLE gpu = {};
+    // GPU handle is valid only for shader-visible heaps (CBV/SRV/UAV or SAMPLER).
+    // For RTV/DSV heaps, gpuBaseHandle.ptr should be 0; leave it 0.
+    if (gpuBaseHandle.ptr != 0) {
+        gpu.ptr = gpuBaseHandle.ptr + byteOffset;
+    }
+
+    D3D12_CPU_DESCRIPTOR_HANDLE cpu = {};
+    cpu.ptr = cpuBaseHandle.ptr + byteOffset;
+
+    ni::DescriptorTable table{};
+    table.gpuBaseHandle = gpu;
+    table.cpuBaseHandle = cpu;
+    table.handleSize = descriptorHandleSize;
+    table.allocated = 0;
+    table.capacity = descriptorNum;
+
     descriptorAllocated += descriptorNum;
     return table;
 }
@@ -315,6 +344,11 @@ void ni::destroyBuffer(Buffer*& buffer) {
     NI_D3D_RELEASE(buffer->upload.apiResource);
     delete buffer;
     buffer = nullptr;
+}
+
+ID3D12CommandQueue* ni::getCommandQueue()
+{
+    return renderer.commandQueue;
 }
 
 void ni::init(int32_t x, int32_t y, uint32_t width, uint32_t height, const char* title, bool fullscreen, bool enablePIX) {
@@ -891,6 +925,11 @@ ni::Buffer* ni::createBuffer(size_t bufferSize, BufferType type, const void* ini
         heapType = D3D12_HEAP_TYPE_DEFAULT;
         createUploadBuffer = true;
         break;
+    case READBACK_BUFFER:
+        initialState = D3D12_RESOURCE_STATE_COPY_DEST;
+        flags |= D3D12_RESOURCE_FLAG_NONE;
+        heapType = D3D12_HEAP_TYPE_READBACK;
+        break;
     default:
         NI_PANIC("Error: Invalid buffer type"); // Invalid Buffer Type
         break;
@@ -1349,6 +1388,26 @@ void ni::DescriptorTable::allocUAVBuffer(ni::Resource& resource, ni::Resource* c
     uavDesc.Buffer.StructureByteStride = structureByteStride;
     uavDesc.Buffer.CounterOffsetInBytes = counterOffsetInBytes;
     uavDesc.Buffer.Flags = rawBuffer ? D3D12_BUFFER_UAV_FLAG_RAW : D3D12_BUFFER_UAV_FLAG_NONE;
+
+    if (rawBuffer) {
+        NI_ASSERT(format == DXGI_FORMAT_R32_TYPELESS && structureByteStride == 0, "RAW UAV requires R32_TYPELESS, stride=0");
+        uavDesc.Format = DXGI_FORMAT_R32_TYPELESS;
+        uavDesc.Buffer.Flags = D3D12_BUFFER_UAV_FLAG_RAW;
+        NI_ASSERT(counter == nullptr, "RAW UAV cannot have a counter");
+    }
+    else if (structureByteStride) {
+        NI_ASSERT(format == DXGI_FORMAT_UNKNOWN, "Structured UAV must use UNKNOWN format");
+        uavDesc.Format = DXGI_FORMAT_UNKNOWN;
+        uavDesc.Buffer.Flags = D3D12_BUFFER_UAV_FLAG_NONE;
+        // counter valid only for structured
+    }
+    else {
+        NI_ASSERT(format != DXGI_FORMAT_UNKNOWN, "Typed UAV must specify a typed DXGI_FORMAT");
+        uavDesc.Format = format;
+        uavDesc.Buffer.Flags = D3D12_BUFFER_UAV_FLAG_NONE;
+        NI_ASSERT(counter == nullptr, "Typed UAV cannot have a counter");
+    }
+
     ni::getDevice()->CreateUnorderedAccessView(resource.apiResource, counter ? counter->apiResource : nullptr, &uavDesc, allocate().cpuHandle);
 }
 
@@ -1409,6 +1468,23 @@ void ni::DescriptorTable::allocSRVBuffer(ni::Resource& resource, DXGI_FORMAT for
     srvDesc.Buffer.NumElements = numElements;
     srvDesc.Buffer.StructureByteStride = structureByteStride;
     srvDesc.Buffer.Flags = rawBuffer ? D3D12_BUFFER_SRV_FLAG_RAW : D3D12_BUFFER_SRV_FLAG_NONE;
+
+    if (rawBuffer) {
+        NI_ASSERT(format == DXGI_FORMAT_R32_TYPELESS && structureByteStride == 0, "RAW SRV requires R32_TYPELESS, stride=0");
+        srvDesc.Format = DXGI_FORMAT_R32_TYPELESS;
+        srvDesc.Buffer.Flags = D3D12_BUFFER_SRV_FLAG_RAW;
+    }
+    else if (structureByteStride) {
+        NI_ASSERT(format == DXGI_FORMAT_UNKNOWN, "Structured SRV must use UNKNOWN format");
+        srvDesc.Format = DXGI_FORMAT_UNKNOWN;
+        srvDesc.Buffer.Flags = D3D12_BUFFER_SRV_FLAG_NONE;
+    }
+    else {
+        NI_ASSERT(format != DXGI_FORMAT_UNKNOWN, "Typed SRV must specify a typed DXGI_FORMAT");
+        srvDesc.Format = format;
+        srvDesc.Buffer.Flags = D3D12_BUFFER_SRV_FLAG_NONE;
+    }
+
     ni::getDevice()->CreateShaderResourceView(resource.apiResource, &srvDesc, allocate().cpuHandle);
 }
 
@@ -1506,13 +1582,14 @@ void ni::DescriptorTable::allocCBVBuffer(ni::Resource& resource, size_t sizeInBy
 {
     D3D12_CONSTANT_BUFFER_VIEW_DESC cbvDesc = {};
     cbvDesc.BufferLocation = resource.apiResource->GetGPUVirtualAddress();
-    cbvDesc.SizeInBytes = (UINT)sizeInBytes;
+    cbvDesc.SizeInBytes = UINT((sizeInBytes + 255) & ~255u); // align up to 256
+    NI_ASSERT(cbvDesc.SizeInBytes <= 65536, "CBV view must be <= 64KB");
     ni::getDevice()->CreateConstantBufferView(&cbvDesc, allocate().cpuHandle);
 }
 
 D3D12_GPU_DESCRIPTOR_HANDLE ni::DescriptorTable::gpuHandle(uint64_t index) {
     D3D12_GPU_DESCRIPTOR_HANDLE handle = gpuBaseHandle;
-    handle.ptr += (index * handleSize);
+    handle.ptr += ((size_t)index * handleSize);
     return handle;
 }
 
