@@ -73,7 +73,7 @@ float4 fbmd(in float3 x)
 
 #include "scenes/scene0/Material0.hlsli"
 
-Material getMaterial(in ParticleData particle, uint pid, in float3 position, in float3 normal, uint scene, float time)
+Material getMaterial(in ParticleData particle, uint pid, inout float3 position, inout float3 normal, uint scene, float time)
 {
     Material material = (Material)0;
     if (scene == 0) material = getMaterialScene0(particle, pid, position, normal, time);
@@ -81,7 +81,7 @@ Material getMaterial(in ParticleData particle, uint pid, in float3 position, in 
 }
 
 
-void CreateRayFromUV(float2 uv, float4x4 invViewProj, float3 cameraPosition, out float3 rayOrigin, out float3 rayDirection)
+void createRayFromUV(float2 uv, float4x4 invViewProj, float3 cameraPosition, out float3 rayOrigin, out float3 rayDirection)
 {
     float4 clipSpacePos = float4(uv * 2.0 - 1.0, 1.0, 1.0);
     float4 worldPos = mul(clipSpacePos, invViewProj);
@@ -90,18 +90,20 @@ void CreateRayFromUV(float2 uv, float4x4 invViewProj, float3 cameraPosition, out
     rayDirection = normalize(worldPos.xyz - cameraPosition);
 }
 
-bool IntersectsParticle(float3 RayOrigin, float3 RayDirection, in ParticleData Particle, out float3 OutPosition, out float3 OutNormal, out float OutDist)
+bool intersectsParticle(float3 rayOrigin, float3 rayDirection, in ParticleData particle, out float3 outPosition, out float3 outNormal, out float outDist, out float3 exitPosition)
 {
-    float3 oc = RayOrigin - Particle.position;
-    float a = dot(RayDirection, RayDirection);
-    float b = 2.0 * dot(oc, RayDirection);
-    float c = dot(oc, oc) - Particle.radius * Particle.radius;
+    float3 oc = rayOrigin - particle.position;
+    float a = dot(rayDirection, rayDirection);
+    float b = 2.0 * dot(oc, rayDirection);
+    float c = dot(oc, oc) - particle.radius * particle.radius;
     float discriminant = b * b - 4.0 * a * c;
+
     if (discriminant < 0.0)
     {
-        OutPosition = float3(0.0, 0.0, 0.0);
-        OutNormal = float3(0.0, 0.0, 0.0);
-        OutDist = 0;
+        outPosition = float3(0.0, 0.0, 0.0);
+        outNormal = float3(0.0, 0.0, 0.0);
+        outDist = 0;
+        exitPosition = float3(0.0, 0.0, 0.0);
         return false;
     }
     else
@@ -109,22 +111,30 @@ bool IntersectsParticle(float3 RayOrigin, float3 RayDirection, in ParticleData P
         float sqrtDiscriminant = sqrt(discriminant);
         float t1 = (-b - sqrtDiscriminant) / (2.0 * a);
         float t2 = (-b + sqrtDiscriminant) / (2.0 * a);
+
         float t = (t1 > 0.0) ? t1 : t2;
         if (t < 0.0)
         {
-            OutPosition = float3(0.0, 0.0, 0.0);
-            OutNormal = float3(0.0, 0.0, 0.0);
-            OutDist = 0;
+            outPosition = float3(0.0, 0.0, 0.0);
+            outNormal = float3(0.0, 0.0, 0.0);
+            outDist = 0;
+            exitPosition = float3(0.0, 0.0, 0.0);
             return false;
         }
-        OutPosition = RayOrigin + t * RayDirection;
-        OutNormal = normalize(OutPosition - Particle.position);
-        OutDist = t;
+
+        outPosition = rayOrigin + t * rayDirection;
+        outNormal = normalize(outPosition - particle.position);
+        outDist = t;
+
+        // exit point always corresponds to the farther root
+        float tExit = max(t1, t2);
+        exitPosition = rayOrigin + tExit * rayDirection;
+
         return true;
     }
 }
 
-bool Trace(float3 rayOrigin, float3 rayDirection, out ParticleData OutParticle, out float3 OutPosition, out float3 OutNormal)
+bool trace(float3 rayOrigin, float3 rayDirection, out ParticleData outParticle, out float3 outPosition, out float3 outNormal, out float3 outExit)
 {
     bool hit = false;
     float lastDepth = 3.402823466e+38F;
@@ -137,14 +147,16 @@ bool Trace(float3 rayOrigin, float3 rayDirection, out ParticleData OutParticle, 
         
         float3 hitPosition;
         float3 hitNormal;
+        float3 hitExit;
         float dist = 0.0;
-        if (IntersectsParticle(rayOrigin, rayDirection, particles[i], hitPosition, hitNormal, dist))
+        if (intersectsParticle(rayOrigin, rayDirection, particles[i], hitPosition, hitNormal, dist, hitExit))
         {
             if (dist < lastDepth)
             {
-                OutParticle = particles[i];
-                OutPosition = hitPosition;
-                OutNormal = hitNormal;
+                outParticle = particles[i];
+                outPosition = hitPosition;
+                outNormal = hitNormal;
+                outExit = hitExit;
                 lastDepth = dist;
             }
             hit = true;
@@ -169,7 +181,7 @@ float3 ortho(float3 v)
                                  : float3(0.0f, -v.z, v.y);
 }
 static const float PI = 3.14159265358979323846f;
-float3 GetSampleBiased(float3 dir, float power)
+float3 getSampleBiased(float3 dir, float power)
 {
     dir = normalize(dir);
     float3 o1 = normalize(ortho(dir));
@@ -186,38 +198,57 @@ float3 GetSampleBiased(float3 dir, float power)
          + r.y * dir;
 }
 
-float3 GetSample(float3 dir)
+float3 getSample(float3 dir)
 {
-    return GetSampleBiased(dir, 0.0f); // unbiased
+    return getSampleBiased(dir, 0.0f); // unbiased
 }
 
-float3 GetCosineWeightedSample(float3 dir)
+float3 getCosineWeightedSample(float3 dir)
 {
-    return GetSampleBiased(dir, 1.0f);
+    return getSampleBiased(dir, 1.0f);
 }
 
-float3 GetBackground(float3 dir)
+float3 getBackground(float3 dir)
 {
     return (float3(0.11, 0.11, 0.18) * pow(((1.0 - dir.y)), 2.0)) * 0;
 }
 
-PathtraceOutput Pathtrace(float3 rayOrigin, float3 rayDirection)
+PathtraceOutput pathtrace(float3 rayOrigin, float3 rayDirection)
 {
     ParticleData particle;
     float3 luminance = 1;
     float3 hitNormal = 0;
     float3 hitPosition = 0;
+    float3 hitExit = 0;
     PathtraceOutput output;
     output.color = 0;
         
-    for (int bounce = 0; bounce < 3; ++bounce)
+    for (int bounce = 0; bounce < 5; ++bounce)
     {
-        if (Trace(rayOrigin, rayDirection, particle, hitPosition, hitNormal))
+        if (trace(rayOrigin, rayDirection, particle, hitPosition, hitNormal, hitExit))
         {
             Material hitMaterial = getMaterial(particle, particle.id - 1, hitPosition, hitNormal, simData.scene, simData.time);
-            rayDirection = lerp(GetCosineWeightedSample(hitNormal), normalize(reflect(rayDirection, hitNormal)), hitMaterial.reflection);
-            rayOrigin = hitPosition + rayDirection * 1e-3;
-            luminance *= hitMaterial.albedo;
+            if (hitMaterial.transparency > 0.0)
+            {
+                if (hitMaterial.reflection == 0.0 || rand2n().x > abs(hitMaterial.transparency * hitMaterial.reflection) * 0.5)
+                {
+                    rayDirection = (normalize(refract(rayDirection, normalize(particle.position - hitExit), hitMaterial.indexOfRefraction)));
+                    rayOrigin = hitExit + rayDirection * 1e-3;
+                    luminance *= lerp(hitMaterial.albedo, 1, hitMaterial.transparency);
+                }
+                else
+                {
+                    rayDirection = lerp(getCosineWeightedSample(hitNormal), normalize(reflect(rayDirection, hitNormal)), hitMaterial.reflection);
+                    rayOrigin = hitPosition + rayDirection * 1e-3;
+                    luminance *= hitMaterial.albedo;
+                }
+            }
+            else
+            {
+                rayDirection = lerp(getCosineWeightedSample(hitNormal), normalize(reflect(rayDirection, hitNormal)), hitMaterial.reflection);
+                rayOrigin = hitPosition + rayDirection * 1e-3;
+                luminance *= hitMaterial.albedo;
+            }
             
             if (hitMaterial.emissive > 0)
             {
@@ -226,7 +257,7 @@ PathtraceOutput Pathtrace(float3 rayOrigin, float3 rayDirection)
         }
         else
         {
-            output.color += luminance * GetBackground(rayDirection);
+            output.color += luminance * getBackground(rayDirection);
             break;
         }
     }
@@ -234,17 +265,18 @@ PathtraceOutput Pathtrace(float3 rayOrigin, float3 rayDirection)
     return output;
 }
 
-bool CalcPositionNormalAndVelocity(float2 uv, out float3 outPosition, out float3 outNormal, out float2 outVelocity, out ParticleData outParticle)
+bool calcPositionNormalAndVelocity(float2 uv, out float3 outPosition, out float3 outNormal, out float2 outVelocity, out ParticleData outParticle)
 {
     float3 rayOrigin;
     float3 rayDirection;
-    CreateRayFromUV(uv, constantData.invViewProjMtx, constantData.cameraPos, rayOrigin, rayDirection);
+    createRayFromUV(uv, constantData.invViewProjMtx, constantData.cameraPos, rayOrigin, rayDirection);
     
     ParticleData particle;
     particle.id = 0;
     float3 hitNormal = -rayDirection;
     float3 hitPosition = rayOrigin + rayDirection * 3.402823466e+38F;
-    bool result = Trace(rayOrigin, rayDirection, particle, hitPosition, hitNormal);
+    float3 hitExit = 0;
+    bool result = trace(rayOrigin, rayDirection, particle, hitPosition, hitNormal, hitExit);
     
     {
         outPosition = hitPosition;
@@ -253,12 +285,13 @@ bool CalcPositionNormalAndVelocity(float2 uv, out float3 outPosition, out float3
         
         float3 prevRayOrigin;
         float3 prevRayDirection;
-        CreateRayFromUV(uv, constantData.prevInvViewProjMtx, constantData.prevCameraPos, prevRayOrigin, prevRayDirection);
+        createRayFromUV(uv, constantData.prevInvViewProjMtx, constantData.prevCameraPos, prevRayOrigin, prevRayDirection);
         
         ParticleData prevParticle;
         float3 prevHitNormal = -prevRayDirection;
         float3 prevHitPosition = prevRayOrigin + prevRayDirection * 3.402823466e+38F;
-        Trace(prevRayOrigin, prevRayDirection, prevParticle, prevHitPosition, prevHitNormal);
+        float3 prevHitExit = 0;
+        trace(prevRayOrigin, prevRayDirection, prevParticle, prevHitPosition, prevHitNormal, hitExit);
         
     }
     
@@ -286,7 +319,16 @@ void main(uint3 DTid : SV_DispatchThreadID)
     PathtraceOutput output;
     output.color = 0;
     
-    bool result = CalcPositionNormalAndVelocity(uv, hitPosition, hitNormal, hitVelocity, hitParticle);
+    float offsetTime = constantData.time;
+#if 0
+    if ((DTid.x % 4) == 0 || (DTid.y % 4) == 0)
+    {
+        offsetTime = fmod(offsetTime, 1);
+    }
+#endif
+    seed2 = uv + cos(offsetTime);
+    
+    bool result = calcPositionNormalAndVelocity(uv, hitPosition, hitNormal, hitVelocity, hitParticle);
     {
         float4 clipSpacePos = mul(constantData.viewProjMtx, float4(hitPosition, 1.0));
         float3 ndcHit = clipSpacePos.xyz / clipSpacePos.w;
@@ -300,23 +342,11 @@ void main(uint3 DTid : SV_DispatchThreadID)
         hitVelocity += (prevUv - currUv);
     }
     
-    float offsetTime = constantData.time;
-#if 0
-        if ((DTid.x % 9) == 0 )
-        {
-            offsetTime = 1;
-        }
-#endif
-    seed2 = uv + cos(offsetTime);
     const int samples = constantData.sampleCount;
-    float2 pxSize = (1 / constantData.resolution.xy) * 0.5;
     for (int i = 0; i < samples; i++)
     {
-        float offset = toRad(offsetTime + (float(i) / samples * 360.0));
-        float2 uvOffset = /*float2(cos(offset), sin(offset))*/rand2n() * pxSize;
-
-        CreateRayFromUV(uv + uvOffset, constantData.invViewProjMtx, constantData.cameraPos, rayOrigin, rayDirection);
-        PathtraceOutput ptResult = Pathtrace(rayOrigin, rayDirection);
+        createRayFromUV(uv, constantData.invViewProjMtx, constantData.cameraPos, rayOrigin, rayDirection);
+        PathtraceOutput ptResult = pathtrace(rayOrigin, rayDirection);
         output.color += ptResult.color;
     }
     output.color /= float(samples);

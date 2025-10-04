@@ -21,7 +21,7 @@ ConstantBuffer<ConstantBufferData> constantData : register(b0);
 SamplerState linearClamp : register(s0);
 SamplerState pointClamp : register(s1);
 
-float Luma(float3 c)
+float luma(float3 c)
 {
     return dot(c, float3(0.299, 0.587, 0.114));
 }
@@ -45,7 +45,7 @@ void main( uint3 DTid : SV_DispatchThreadID )
     float2 vel = velocityBuffer[px].xy;
     float2 uvPrev = uv + vel;
     
-    bool valid = all(uvPrev > 0.0) && all(uvPrev <= 1.0) && idcurr > 0;
+    bool valid = all(uvPrev > 0.0) && all(uvPrev <= 1.0) && all(idcurr > 0);
     
     float3 cprev = 0;
     float m1prev = 0;
@@ -63,11 +63,11 @@ void main( uint3 DTid : SV_DispatchThreadID )
         float zprev = PrevDepthBuffer.SampleLevel(linearClamp, uvPrev, 0).r;
         float ndot = dot(ncurr, nprev);
         float dz = abs(zcurr - zprev);
-        const float zt = 0.002;
+        const float zt = 0.1;
         float dzThr = max(zt * zcurr, zt * 0.5);
         
         const float nt = 0.9;
-        valid = valid && (ndot > nt) && (dz < dzThr) && idprev == idcurr;
+        valid = valid && (ndot > nt) && (dz < dzThr) && (idprev == idcurr);
 
     }
 
@@ -81,7 +81,7 @@ void main( uint3 DTid : SV_DispatchThreadID )
         {
             int2 q = clamp(int2(px) + int2(ox, oy), int2(0, 0), int2(constantData.resolution.xy) - 1);
             float3 Cn = CurrentFrame.Load(int3(q, 0)).rgb;
-            float y = Luma(Cn);
+            float y = luma(Cn);
             Ymin = min(Ymin, y);
             Ymax = max(Ymax, y);
             sum += y;
@@ -99,13 +99,13 @@ void main( uint3 DTid : SV_DispatchThreadID )
     float3 Chist = cprev;
     if (valid)
     {
-        float Yh = Luma(Chist);
+        float Yh = luma(Chist);
         float Yhc = clamp(Yh, Ymin, Ymax);
         float s = (Yh > 1e-4) ? (Yhc / Yh) : 1.0;
         Chist *= s;
     }
     
-    float Ycurr = Luma(ccurr);
+    float Ycurr = luma(ccurr);
     float3 Cout;
     float M1, M2;
     
@@ -121,6 +121,7 @@ void main( uint3 DTid : SV_DispatchThreadID )
         Cout = lerp(ccurr, Chist, 1 - blend);
         M1 = lerp(Ycurr, m1prev, 1 - blend);
         M2 = lerp(Ycurr * Ycurr, m2prev, 1 - blend);
+
     }
     ResultTexture[px] = float4(Cout, 1);
     HistoryM1Out[px] = M1;

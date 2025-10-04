@@ -10,28 +10,28 @@ typedef ni::Float2 float2;
 typedef uint32_t uint;
 #endif
 
+struct Material
+{
+	float3 albedo;
+	float emissive;
+	float reflection;
+	float transparency;
+	float indexOfRefraction;
+};
+
 struct ParticleData
 {
 	float3 position;
 	float3 prevPosition;
 	float3 velocity;
 	float3 acceleration;
-	float3 albedo;
 	float radius;
 	float elasticity;
 	float friction;
-	float reflection;
-	float emissive;
 	uint id; // don't use this. It's for the temporal reprojection rejection
 	uint dynamic;
 	uint visible;
-};
-
-struct Material
-{
-	float3 albedo;
-	float emissive;
-	float reflection;
+	Material material;
 };
 
 struct ParticleSceneData
@@ -85,6 +85,7 @@ struct FinalPassData
 	float2 resolution;
 	float2 nativeResolution;
 	float time;
+	float brightness;
 };
 
 #ifndef IS_CPU

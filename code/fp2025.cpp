@@ -24,9 +24,15 @@ inline UINT PIX_COLOR_INDEX(BYTE i) { return 0x00000000 | i; }
 
 #define MAX_PARTICLE_NUM (32*10)
 
+#if NI_DEBUG
+#define ENABLE_PIX 0
+#else
+#define ENABLE_PIX 0
+#endif
+
 int main()
 {
-	ni::init(0, 0, 1920, 1080, "FP2025", !NI_DEBUG, NI_DEBUG);
+	ni::init(0, 0, 1920, 1080, "FP2025", !NI_DEBUG, ENABLE_PIX);
 
 #if NI_DEBUG
 	typedef void(WINAPI* BeginEventOnCommandList)(ID3D12GraphicsCommandList* commandList, UINT64 color, _In_ PCSTR formatString);
@@ -147,7 +153,7 @@ int main()
 	depthOfFieldPass->build();
 
 	ConstantBufferUploader<DepthOfFieldData>* depthOfFieldCB = new ConstantBufferUploader<DepthOfFieldData>();
-	depthOfFieldCB->data.focusScale = 18.0f;
+	depthOfFieldCB->data.focusScale = 0.0f;//18.0f;
 	depthOfFieldCB->data.focusPoint = 22.0f;
 	depthOfFieldCB->data.radiusScale = 1.5f;
 	depthOfFieldCB->data.blurSize = 20.0f;
@@ -168,6 +174,7 @@ int main()
 	transferToBackBufferCB->data.nativeResolution = ni::Float2(ni::getViewWidth(), ni::getViewHeight());
 	transferToBackBufferCB->data.resolution = ni::Float2(RENDER_WIDTH, RENDER_HEIGHT);
 	transferToBackBufferCB->data.time = 0.0f;
+	transferToBackBufferCB->data.brightness = 1.0f;
 
 	while (!ni::shouldQuit())
 	{
@@ -210,7 +217,14 @@ int main()
 				NI_LOG("focusScale: %.4f", depthOfFieldCB->data.focusScale);
 			}
 
-			depthOfFieldCB->data.focusPoint += ni::mouseWheelY() * 1.0f;
+			if (ni::keyDown(ni::CTRL))
+			{
+				depthOfFieldCB->data.focusPoint += ni::mouseWheelY() * 1.0f;
+			}
+			else if (ni::keyDown(ni::R))
+			{
+				transferToBackBufferCB->data.brightness = ni::saturate(transferToBackBufferCB->data.brightness + ni::mouseWheelY() * 0.01f);
+			}
 
 			if (ni::mouseClick(ni::MOUSE_BUTTON_RIGHT) || sceneRenderCB->data.time == 0.0f)
 			{
@@ -356,6 +370,7 @@ int main()
 				ni::Texture* input = atrousInputOutput[0];
 				ni::Texture* output = atrousInputOutput[1];
 
+# if 1
 				for (uint32_t index = 0; index < 2; ++index)
 				{
 					input = atrousInputOutput[index % 2];
@@ -383,6 +398,9 @@ int main()
 					commandList->SetComputeRoot32BitConstants(1, ni::calcNumUint32FromSize(sizeof(Constant)), &constantData, 0);
 					commandList->Dispatch((uint32_t)(sceneRenderCB->data.resolution.x / 32.0f), (uint32_t)(sceneRenderCB->data.resolution.y / 32.0f) + 1, 1);
 				}
+#else
+				output = resultTemporalReprojection;
+#endif
 
 				pixEndEventOnCommandList(commandList);
 

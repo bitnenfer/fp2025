@@ -112,7 +112,10 @@ float3 Uncharted2ToneMapping(float3 color)
     return color;
 }
 
-
+float luma(float3 c)
+{
+    return dot(c, float3(0.299, 0.587, 0.114));
+}
 
 float4 main(float4 pos : SV_Position) : SV_Target
 {
@@ -141,12 +144,9 @@ float4 main(float4 pos : SV_Position) : SV_Target
         return float4(0, 0, 0, 1);
 
     float2 uv = (pos.xy - tl) / disp;
+    float3 color = frameInput.Sample(linearSampler, uv).rgb;
+    float lum = luma(color);
     
-    float strength = 24.0;
-    float x = (uv.x + 4.0) * (uv.y + 4.0) * (finalPassData.time * 10.0);
-    float4 grain = (fmod((fmod(x, 13.0) + 1.0) * (fmod(x, 123.0) + 1.0), 0.01) - 0.005) * strength;
-    grain = 1.0 - grain;
-    
-    return float4(WhitePreservingLumaBasedReinhardToneMapping(frameInput.Sample(linearSampler, uv).rgb * grain.x), 1);
+    return float4(WhitePreservingLumaBasedReinhardToneMapping(lerp(0, color, saturate(finalPassData.brightness + lum) * finalPassData.brightness)), 1);
 
 }

@@ -14,9 +14,9 @@ void initScene0(uint pid)
         particle.acceleration = 0;
         particle.friction = 0.6;
         particle.dynamic = false;
-        particle.emissive = 0;
-        particle.albedo = 1;
-        particle.reflection = 0.0;
+        particle.material.emissive = 0;
+        particle.material.albedo = 1;
+        particle.material.reflection = 0.0;
         particle.visible = 1;
     }
     else if (pid == 1)
@@ -28,9 +28,9 @@ void initScene0(uint pid)
         particle.acceleration = 0;
         particle.friction = 0.6;
         particle.dynamic = false;
-        particle.emissive = 0;
-        particle.albedo = 1;
-        particle.reflection = 0.85;
+        particle.material.emissive = 0;
+        particle.material.albedo = 1;
+        particle.material.reflection = 0.85;
         particle.visible = 1;
     }
     else if (pid == 2)
@@ -42,9 +42,9 @@ void initScene0(uint pid)
         particle.acceleration = 0;
         particle.friction = 0.0;
         particle.dynamic = false;
-        particle.emissive = 0.0;
-        particle.albedo = 0.1;
-        particle.reflection = 1.0;
+        particle.material.emissive = 0.0;
+        particle.material.albedo = 0.1;
+        particle.material.reflection = 1.0;
         particle.visible = 1;
     }
     else if (pid == 3)
@@ -56,9 +56,9 @@ void initScene0(uint pid)
         particle.acceleration = 0;
         particle.friction = 0.0;
         particle.dynamic = false;
-        particle.emissive = 0.0;
-        particle.albedo = .05;
-        particle.reflection = 0.0;
+        particle.material.emissive = 0.0;
+        particle.material.albedo = .05;
+        particle.material.reflection = 0.0;
         particle.visible = 1;
     }
     else if (pid == 4)
@@ -70,9 +70,9 @@ void initScene0(uint pid)
         particle.acceleration = 0;
         particle.friction = 0.0;
         particle.dynamic = false;
-        particle.emissive = 0.0;
-        particle.albedo = 1; //float3(0, 0, 1);
-        particle.reflection = 0.0;
+        particle.material.emissive = 0.0;
+        particle.material.albedo = 1; //float3(0, 0, 1);
+        particle.material.reflection = 0.0;
         particle.visible = 1;
     }
     else if (pid == 5)
@@ -84,9 +84,9 @@ void initScene0(uint pid)
         particle.acceleration = 0;
         particle.friction = 0.0;
         particle.dynamic = false;
-        particle.emissive = 0;
-        particle.albedo = 1;
-        particle.reflection = 0.0;
+        particle.material.emissive = 0;
+        particle.material.albedo = 1;
+        particle.material.reflection = 0.0;
         particle.visible = 0;
     }
     else if (pid == 6)
@@ -99,9 +99,9 @@ void initScene0(uint pid)
         particle.acceleration = 0;
         particle.friction = 0.0;
         particle.dynamic = false;
-        particle.emissive = 0.0;
-        particle.albedo = 0; //float3(0, 0, 1);
-        particle.reflection = 0.0;
+        particle.material.emissive = 0.0;
+        particle.material.albedo = 0; //float3(0, 0, 1);
+        particle.material.reflection = 0.0;
         particle.visible = 0;
     }
     else
@@ -113,9 +113,9 @@ void initScene0(uint pid)
         particle.acceleration = float3(0, 0.098, 0);
         particle.friction = 0.5;
         particle.dynamic = true;
-        particle.emissive = rand() > 0.2 ? 1.0 : 0;
-        particle.albedo = getRandomColor(float(pid) / particleScene.numParticles) * float3(0.01, 0.03, 1.0);
-        particle.reflection = 1;
+        particle.material.emissive = rand() < 0.2 ? 1.0 : 0;
+        particle.material.albedo = getRandomColor(float(pid) / particleScene.numParticles);// * float3(0.01, 0.03, 1.0);
+        particle.material.reflection = 1;
         particle.visible = 1;
     }
     particle.prevPosition = 0;
@@ -131,7 +131,7 @@ void simScene0(uint pid, float time)
         //particles[pid].emissive = abs(sin((sin(pid + time * .5) * 0.5))) * 1.0;
         particles[pid].velocity += particle.acceleration;
         particles[pid].position += particle.velocity;
-        //particles[pid].albedo = getRandomColor(fmod(float(pid) / particleScene.numParticles + time, 1.0));
+        //particles[pid].albedo = getRandomColor(fmod(float(pid) / particleScene.numParticles + time * 0.1, 1.0));
     }
     
     if (pid == 6)

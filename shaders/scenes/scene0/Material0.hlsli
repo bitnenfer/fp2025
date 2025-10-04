@@ -1,11 +1,9 @@
 #include "../../ParticleConfig.h"
 
-Material getMaterialScene0(in ParticleData particle, uint pid, in float3 position, in float3 normal, float time)
+Material getMaterialScene0(in ParticleData particle, uint pid, inout float3 position, inout float3 normal, float time)
 {
-    Material material;
-    material.albedo = particle.albedo;
-    material.emissive = particle.emissive;
-    material.reflection = particle.reflection;
+    Material material = particle.material;
+    
     if (pid == 0)
     {
         float3 checkerP = position * 0.1;
@@ -26,7 +24,9 @@ Material getMaterialScene0(in ParticleData particle, uint pid, in float3 positio
         ////material.emissive = s * 1.0;
         float4 fb = fbmd((particle.position - position) * 2);
         float s = pow(abs(length(fb)), 0.8);
-        material.reflection = s;
+        material.reflection = 1;
+        material.transparency = material.emissive ? 0 : 1;
+        material.indexOfRefraction = 1+s;
     }
     return material;
 }
