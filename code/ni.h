@@ -878,6 +878,7 @@ namespace ni {
 	char getLastChar();
 	float randomFloat();
 	uint32_t randomUint();
+	template<typename T> uint32_t calcNumUint32FromSize() { return sizeof(T) / sizeof(uint32_t); }
 	uint32_t calcNumUint32FromSize(size_t size);
 	double getSeconds();
 	size_t getDXGIFormatBits(DXGI_FORMAT format);

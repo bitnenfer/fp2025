@@ -333,6 +333,7 @@ ni::PipelineState* ni::buildGraphicsPipelineState(GraphicsPipelineDesc& desc) {
 }
 
 void ni::destroyPipelineState(PipelineState*& pipelineState) {
+    if (pipelineState == nullptr) return;
     NI_D3D_RELEASE(pipelineState->pso);
     NI_D3D_RELEASE(pipelineState->rootSignature);
     delete pipelineState;
@@ -340,6 +341,7 @@ void ni::destroyPipelineState(PipelineState*& pipelineState) {
 }
 
 void ni::destroyBuffer(Buffer*& buffer) {
+    if (buffer == nullptr) return;
     NI_D3D_RELEASE(buffer->resource.apiResource);
     NI_D3D_RELEASE(buffer->upload.apiResource);
     delete buffer;
@@ -1250,6 +1252,7 @@ ni::Texture* ni::createTexture(uint32_t width, uint32_t height, uint32_t depth, 
 }
 
 void ni::destroyTexture(Texture*& texture) {
+    if (texture == nullptr) return;
     NI_D3D_RELEASE(texture->resource.apiResource);
     NI_D3D_RELEASE(texture->upload.apiResource);
     delete texture;

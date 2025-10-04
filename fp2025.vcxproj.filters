@@ -21,6 +21,21 @@
     <ClCompile Include="code\ni.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="code\imgui\imgui.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="code\imgui\imgui_demo.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="code\imgui\imgui_draw.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="code\imgui\imgui_tables.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="code\imgui\imgui_widgets.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="code\ni.h">
@@ -38,6 +53,27 @@
     <ClInclude Include="code\audio.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="code\imgui\imgui_internal.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="code\imgui\imstb_rectpack.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="code\imgui\imstb_textedit.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="code\imgui\imstb_truetype.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="code\editor.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="code\imgui\imconfig.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="code\imgui\imgui.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="shaders\SimulateCS.hlsl" />
@@ -49,6 +85,8 @@
     <FxCompile Include="shaders\DepthOfFieldPS.hlsl" />
     <FxCompile Include="shaders\TransferToBackbufferPS.hlsl" />
     <FxCompile Include="shaders\AudioProcessCS.hlsl" />
+    <FxCompile Include="shaders\ImGui_PS.hlsl" />
+    <FxCompile Include="shaders\ImGui_VS.hlsl" />
   </ItemGroup>
   <ItemGroup>
     <None Include="shaders\scenes\scene0\Sim0.hlsli" />

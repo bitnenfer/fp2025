@@ -15,6 +15,7 @@
 
 #include "render.h"
 #include "audio.h"
+#include "editor.h"
 
 inline UINT PIX_COLOR_INDEX(BYTE i) { return 0x00000000 | i; }
 
@@ -43,6 +44,9 @@ int main()
 #endif
 	// Audio Renderer
 	AudioRenderer* audioRenderer = new AudioRenderer(3*60);
+
+	// Editor
+	Editor* editor = new Editor();
 
 	// Initialize particle simulation
 	ni::FlyCamera camera(ni::Float3(0, -0, -80));
@@ -165,11 +169,61 @@ int main()
 	transferToBackBufferCB->data.resolution = ni::Float2(RENDER_WIDTH, RENDER_HEIGHT);
 	transferToBackBufferCB->data.time = 0.0f;
 
-
-
 	while (!ni::shouldQuit())
 	{
 		ni::pollEvents();
+			
+		editor->drawUI();
+
+		if (!editor->isDrawing())
+		{
+			if (ni::keyDown(ni::SHIFT))
+			{
+				camera.speedScale = 0.35f;
+			}
+			else
+			{
+				camera.speedScale = 0.15f;
+			}
+
+			camera.update();
+
+			if (ni::keyDown(ni::UP))
+			{
+				depthOfFieldCB->data.focusPoint += 0.1f;
+				NI_LOG("focusPoint: %.4f", depthOfFieldCB->data.focusPoint);
+			}
+			else if (ni::keyDown(ni::DOWN))
+			{
+				depthOfFieldCB->data.focusPoint -= 0.1f;
+				NI_LOG("focusPoint: %.4f", depthOfFieldCB->data.focusPoint);
+			}
+
+			if (ni::keyDown(ni::RIGHT))
+			{
+				depthOfFieldCB->data.focusScale += 0.1f;
+				NI_LOG("focusScale: %.4f", depthOfFieldCB->data.focusScale);
+			}
+			else if (ni::keyDown(ni::LEFT))
+			{
+				depthOfFieldCB->data.focusScale -= 0.1f;
+				NI_LOG("focusScale: %.4f", depthOfFieldCB->data.focusScale);
+			}
+
+			depthOfFieldCB->data.focusPoint += ni::mouseWheelY() * 1.0f;
+
+			if (ni::mouseClick(ni::MOUSE_BUTTON_RIGHT) || sceneRenderCB->data.time == 0.0f)
+			{
+				simulationCB->data.time = 0;
+				simulationCB->data.frame = 0;
+			}
+
+		}
+
+		if (ni::mouseClick(ni::MOUSE_BUTTON_MIDDLE))
+		{
+			editor->toggleRenderEnable();
+		}
 
 		if (ni::FrameData* frame = ni::beginFrame())
 		{
@@ -196,58 +250,13 @@ int main()
 			}
 			else
 			{
-				if (!audioRenderer->isPlaying())
-				{
-					//audioRenderer->play();
-				}
-
-				if (ni::keyDown(ni::SHIFT))
-				{
-					camera.speedScale = 0.35f;
-				}
-				else
-				{
-					camera.speedScale = 0.15f;
-				}
-
 				// Update CPU scene data
-				camera.update();
 				sceneRenderCB->data.cameraPos = camera.position;
 				sceneRenderCB->data.viewMtx = camera.makeViewMatrix();
 				sceneRenderCB->data.viewProjMtx = projMtx * sceneRenderCB->data.viewMtx;
 				sceneRenderCB->data.invViewProjMtx = sceneRenderCB->data.viewProjMtx;
 				sceneRenderCB->data.invViewProjMtx.transpose().invert();
 				transferToBackBufferCB->data.time = sceneRenderCB->data.time;
-				if (ni::keyDown(ni::UP))
-				{
-					depthOfFieldCB->data.focusPoint += 0.1f;
-					NI_LOG("focusPoint: %.4f", depthOfFieldCB->data.focusPoint);
-				}
-				else if (ni::keyDown(ni::DOWN))
-				{
-					depthOfFieldCB->data.focusPoint -= 0.1f;
-					NI_LOG("focusPoint: %.4f", depthOfFieldCB->data.focusPoint);
-				}
-
-				if (ni::keyDown(ni::RIGHT))
-				{
-					depthOfFieldCB->data.focusScale += 0.1f;
-					NI_LOG("focusScale: %.4f", depthOfFieldCB->data.focusScale);
-				}
-				else if (ni::keyDown(ni::LEFT))
-				{
-					depthOfFieldCB->data.focusScale -= 0.1f;
-					NI_LOG("focusScale: %.4f", depthOfFieldCB->data.focusScale);
-				}
-
-				depthOfFieldCB->data.focusPoint += ni::mouseWheelY() * 1.0f;
-
-				if (ni::mouseClick(ni::MOUSE_BUTTON_RIGHT) || sceneRenderCB->data.time == 0.0f)
-				{
-					simulationCB->data.time = 0;
-					simulationCB->data.frame = 0;
-				}
-
 				simulationCB->data.cameraPos = camera.position;
 
 				pixBeginEventOnCommandList(commandList, PIX_COLOR_INDEX(pixColorIndex++), "Update CBs");
@@ -437,6 +446,8 @@ int main()
 				simulationCB->data.frame++;
 			}
 
+			editor->render(commandList, descriptorAllocator, resourceBarrier);
+
 			resourceBarrier.transition(ni::getCurrentBackbuffer()->resource, D3D12_RESOURCE_STATE_PRESENT);
 			resourceBarrier.flush(commandList);
 
@@ -449,6 +460,11 @@ int main()
 		}
 
 		ni::present(!false);
+
+		if (audioRenderer->hasFinishedRendering() && !audioRenderer->isPlaying())
+		{
+			//audioRenderer->play();
+		}
 	}
 
 	ni::waitForAllFrames();
@@ -459,7 +475,8 @@ int main()
 	delete transferToBackBufferPass;
 	delete transferToBackBufferCB;
 	delete particleSceneCB;
-	//delete audioRenderer;
+	delete audioRenderer;
+	delete editor;
 
 	ni::destroyPipelineState(atrousFilter);
 	ni::destroyPipelineState(temporalReprojection);

@@ -81,11 +81,23 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="code\fp2025.cpp" />
+    <ClCompile Include="code\imgui\imgui.cpp" />
+    <ClCompile Include="code\imgui\imgui_demo.cpp" />
+    <ClCompile Include="code\imgui\imgui_draw.cpp" />
+    <ClCompile Include="code\imgui\imgui_tables.cpp" />
+    <ClCompile Include="code\imgui\imgui_widgets.cpp" />
     <ClCompile Include="code\ni.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="code\audio.h" />
+    <ClInclude Include="code\editor.h" />
     <ClInclude Include="code\fp2025.h" />
+    <ClInclude Include="code\imgui\imconfig.h" />
+    <ClInclude Include="code\imgui\imgui.h" />
+    <ClInclude Include="code\imgui\imgui_internal.h" />
+    <ClInclude Include="code\imgui\imstb_rectpack.h" />
+    <ClInclude Include="code\imgui\imstb_textedit.h" />
+    <ClInclude Include="code\imgui\imstb_truetype.h" />
     <ClInclude Include="code\ni.h" />
     <ClInclude Include="code\render.h" />
     <ClInclude Include="shaders\ParticleConfig.h" />
@@ -120,6 +132,26 @@
       <HeaderFileOutput Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(ProjectDir)/tmp/shaders/%(Filename).h</HeaderFileOutput>
       <VariableName Condition="'$(Configuration)|$(Platform)'=='Release|x64'">%(Filename)</VariableName>
       <HeaderFileOutput Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(ProjectDir)/tmp/shaders/%(Filename).h</HeaderFileOutput>
+    </FxCompile>
+    <FxCompile Include="shaders\ImGui_PS.hlsl">
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">6.0</ShaderModel>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Release|x64'">6.0</ShaderModel>
+      <VariableName Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">%(Filename)</VariableName>
+      <HeaderFileOutput Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(ProjectDir)/tmp/shaders/%(Filename).h</HeaderFileOutput>
+      <VariableName Condition="'$(Configuration)|$(Platform)'=='Release|x64'">%(Filename)</VariableName>
+      <HeaderFileOutput Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(ProjectDir)/tmp/shaders/%(Filename).h</HeaderFileOutput>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Pixel</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Pixel</ShaderType>
+    </FxCompile>
+    <FxCompile Include="shaders\ImGui_VS.hlsl">
+      <VariableName Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">%(Filename)</VariableName>
+      <HeaderFileOutput Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(ProjectDir)/tmp/shaders/%(Filename).h</HeaderFileOutput>
+      <VariableName Condition="'$(Configuration)|$(Platform)'=='Release|x64'">%(Filename)</VariableName>
+      <HeaderFileOutput Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(ProjectDir)/tmp/shaders/%(Filename).h</HeaderFileOutput>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">6.0</ShaderModel>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Release|x64'">6.0</ShaderModel>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Vertex</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Vertex</ShaderType>
     </FxCompile>
     <FxCompile Include="shaders\ParticleBasePassCS.hlsl">
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Compute</ShaderType>

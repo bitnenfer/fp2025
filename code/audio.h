@@ -83,7 +83,7 @@ struct AudioRenderer
 		shouldRunAudioThread = false;
 		WaitForSingleObject(audioThreadHandle, INFINITE);
 
-		while (!hasWaveOutStopped()) {}
+		while (!canDestroy()) {}
 
 		ni::destroyPipelineState(audioProcess);
 		ni::destroyBuffer(renderedBuffer);
@@ -222,14 +222,14 @@ struct AudioRenderer
 	}
 
 private:
-	bool hasWaveOutStopped() const
+	bool canDestroy() const
 	{
 		bool hasStopped = true;
 		for (uint32_t index = 0; index < WAVE_BLOCK_NUM; ++index)
 		{
 			hasStopped = hasStopped && waveHeader[index].dwUser == 0;
 		}
-		return !isWaitingForWaveOut && hasStopped;
+		return /*!isWaitingForWaveOut &&*/ hasStopped;
 	}
 
 	void processAudioThreadFrame()

@@ -373,7 +373,7 @@ struct FullscreenRasterPass
 		triangleVBV.SizeInBytes = (UINT)triangleVB->sizeInBytes;
 		triangleVBV.StrideInBytes = sizeof(ni::Float3);
 		commandList->IASetVertexBuffers(0, 1, &triangleVBV);
-		commandList->IASetPrimitiveTopology(D3D10_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+		commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
 		commandList->OMSetRenderTargets(1, &rtvDescriptorHandle, true, nullptr);
 
