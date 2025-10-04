@@ -130,7 +130,7 @@ void simScene0(uint pid, float time)
         particles[pid].acceleration = 0.00001 * (float3(0, 0, 0) - particle.position);
         //particles[pid].emissive = abs(sin((sin(pid + time * .5) * 0.5))) * 1.0;
         particles[pid].velocity += particle.acceleration;
-        particles[pid].position += particle.velocity;
+        //particles[pid].position += particle.velocity;
         //particles[pid].albedo = getRandomColor(fmod(float(pid) / particleScene.numParticles + time * 0.1, 1.0));
     }
     

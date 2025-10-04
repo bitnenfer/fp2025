@@ -26,7 +26,7 @@ Material getMaterialScene0(in ParticleData particle, uint pid, inout float3 posi
         float s = pow(abs(length(fb)), 0.8);
         material.reflection = 1;
         material.transparency = material.emissive ? 0 : 1;
-        material.indexOfRefraction = 1+s;
+        material.indexOfRefraction = 0.5+s*1.5;
     }
     return material;
 }

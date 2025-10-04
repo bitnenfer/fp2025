@@ -234,7 +234,9 @@ PathtraceOutput pathtrace(float3 rayOrigin, float3 rayDirection)
                 {
                     rayDirection = (normalize(refract(rayDirection, normalize(particle.position - hitExit), hitMaterial.indexOfRefraction)));
                     rayOrigin = hitExit + rayDirection * 1e-3;
-                    luminance *= lerp(hitMaterial.albedo, 1, hitMaterial.transparency);
+                    float3 color = lerp(hitMaterial.albedo, 1, hitMaterial.transparency);
+                    luminance *= (color * 2);
+
                 }
                 else
                 {
